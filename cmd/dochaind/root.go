@@ -185,13 +185,13 @@ func initTendermintConfig() *tmcfg.Config {
 
 	// Consensus timings aimed at an approximately 1-second chain on healthy
 	// infrastructure and a small validator set.
-	cfg.Consensus.TimeoutPropose = 300 * time.Millisecond
-	cfg.Consensus.TimeoutProposeDelta = 100 * time.Millisecond
-	cfg.Consensus.TimeoutPrevote = 300 * time.Millisecond
-	cfg.Consensus.TimeoutPrevoteDelta = 100 * time.Millisecond
-	cfg.Consensus.TimeoutPrecommit = 300 * time.Millisecond
-	cfg.Consensus.TimeoutPrecommitDelta = 100 * time.Millisecond
-	cfg.Consensus.TimeoutCommit = 200 * time.Millisecond
+cfg.Consensus.TimeoutPropose = 1 * time.Second
+cfg.Consensus.TimeoutProposeDelta = 500 * time.Millisecond
+cfg.Consensus.TimeoutPrevote = 500 * time.Millisecond
+cfg.Consensus.TimeoutPrevoteDelta = 500 * time.Millisecond
+cfg.Consensus.TimeoutPrecommit = 500 * time.Millisecond
+cfg.Consensus.TimeoutPrecommitDelta = 500 * time.Millisecond
+cfg.Consensus.TimeoutCommit = 1 * time.Second
 
 	// Slightly higher peer defaults for better connectivity on fresh nodes.
 	cfg.P2P.MaxNumInboundPeers = 100

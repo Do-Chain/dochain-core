@@ -77,9 +77,13 @@ func initAppConfig() (string, interface{}) {
 	srvCfg.MinGasPrices = "0udo"
 
 	// Pruning defaults
-	srvCfg.Pruning = "custom"
-	srvCfg.PruningKeepRecent = "1000"
-	srvCfg.PruningInterval = "10"
+	// Pruning defaults
+srvCfg.Pruning = "custom"
+srvCfg.PruningKeepRecent = "50"
+srvCfg.PruningKeepEvery = "0"
+srvCfg.PruningInterval = "10"
+
+
 
 	// API defaults
 	srvCfg.API.Enable = true
