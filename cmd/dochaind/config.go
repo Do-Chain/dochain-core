@@ -80,7 +80,7 @@ func initAppConfig() (string, interface{}) {
 	// Pruning defaults
 srvCfg.Pruning = "custom"
 srvCfg.PruningKeepRecent = "50"
-srvCfg.PruningKeepEvery = "0"
+
 srvCfg.PruningInterval = "10"
 
 
