@@ -267,6 +267,7 @@ replace (
 	github.com/syndtr/goleveldb => github.com/Daviddochain/goleveldb v0.0.0-20230914223247-2b28f6655121
 	go.etcd.io/bbolt => go.etcd.io/bbolt v1.3.7
 	golang.org/x/exp => golang.org/x/exp v0.0.0-20250506013437-ce4c2cf36ca6
+	github.com/cosmos/cosmos-sdk => github.com/Daviddochain/cosmos-sdk-dochain v0.53.6-dochain
 )
 
 
