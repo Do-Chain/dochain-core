@@ -268,6 +268,15 @@ func CreateTestInput(t *testing.T) TestInput {
 		distrtypes.ModuleName,
 	)
 	oracleDefaultParams := oracletypes.DefaultParams()
+	oracleDefaultParams.Whitelist = oracletypes.DenomList{
+		{Name: core.MicroDoDenom, TobinTax: sdkmath.LegacyZeroDec()},
+		{Name: core.MicroSDRDenom, TobinTax: oracletypes.DefaultTobinTax},
+		{Name: core.MicroUSDDenom, TobinTax: oracletypes.DefaultTobinTax},
+		{Name: core.MicroKRWDenom, TobinTax: oracletypes.DefaultTobinTax},
+		{Name: core.MicroCNYDenom, TobinTax: oracletypes.DefaultTobinTax},
+		{Name: core.MicroGBPDenom, TobinTax: oracletypes.DefaultTobinTax},
+		{Name: core.MicroMNTDenom, TobinTax: oracletypes.DefaultTobinTax},
+	}
 	oracleKeeper.SetParams(ctx, oracleDefaultParams)
 
 	for _, denom := range oracleDefaultParams.Whitelist {
@@ -296,9 +305,3 @@ func FundAccount(input TestInput, addr sdk.AccAddress, amounts sdk.Coins) error 
 
 	return input.BankKeeper.SendCoinsFromModuleToAccount(input.Ctx, faucetAccountName, addr, amounts)
 }
-
-
-
-
-
-

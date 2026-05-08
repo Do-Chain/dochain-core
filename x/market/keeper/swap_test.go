@@ -22,7 +22,7 @@ func TestApplySwapToPool(t *testing.T) {
 	input.MarketKeeper.ApplySwapToPool(input.Ctx, offerCoin, askCoin)
 	newSDRPoolDelta := input.MarketKeeper.GetDoPoolDelta(input.Ctx)
 	sdrDiff := newSDRPoolDelta.Sub(oldSDRPoolDelta)
-	require.Equal(t, sdkmath.LegacyNewDec(-1700), sdrDiff)
+	require.Equal(t, sdkmath.LegacyNewDec(-1000), sdrDiff)
 
 	// reverse swap
 	offerCoin = sdk.NewCoin(core.MicroSDRDenom, sdkmath.NewInt(1700))
@@ -31,7 +31,7 @@ func TestApplySwapToPool(t *testing.T) {
 	input.MarketKeeper.ApplySwapToPool(input.Ctx, offerCoin, askCoin)
 	newSDRPoolDelta = input.MarketKeeper.GetDoPoolDelta(input.Ctx)
 	sdrDiff = newSDRPoolDelta.Sub(oldSDRPoolDelta)
-	require.Equal(t, sdkmath.LegacyNewDec(1700), sdrDiff)
+	require.Equal(t, sdkmath.LegacyNewDec(1000), sdrDiff)
 
 	// do <> do, no pool changes are expected
 	offerCoin = sdk.NewCoin(core.MicroSDRDenom, sdkmath.NewInt(1700))
@@ -99,17 +99,11 @@ func TestIlliquidTobinTaxListParams(t *testing.T) {
 
 	illiquidFactor := sdkmath.LegacyNewDec(2)
 	input.OracleKeeper.SetTobinTax(input.Ctx, core.MicroSDRDenom, tobinTax)
-	input.OracleKeeper.SetTobinTax(input.Ctx, core.MicroMNTDenom, tobinMul(illiquidFactor))
+	input.OracleKeeper.SetTobinTax(input.Ctx, core.MicroMNTDenom, tobinTax.Mul(illiquidFactor))
 
 	swapAmountInSDR := doPriceInSDR.MulInt64(rand.Int63()%10000 + 2).TruncateInt()
 	offerCoin := sdk.NewCoin(core.MicroSDRDenom, swapAmountInSDR)
 	_, spread, err := input.MarketKeeper.ComputeSwap(input.Ctx, offerCoin, core.MicroMNTDenom)
 	require.NoError(t, err)
-	require.Equal(t, tobinMul(illiquidFactor), spread)
+	require.Equal(t, tobinTax.Mul(illiquidFactor), spread)
 }
-
-
-
-
-
-

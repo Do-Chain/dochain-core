@@ -55,12 +55,12 @@ func TestSwapMsg(t *testing.T) {
 
 	// calculate estimation
 	basePool := input.MarketKeeper.GetParams(input.Ctx).BasePool
-	price, _ := input.OracleKeeper.GetDoExchangeRate(input.Ctx, core.MicroSDRDenom)
 	cp := basePool.Mul(basePool)
 
 	doPool := basePool.Add(beforeDoPoolDelta)
 	baseAssetPool := cp.Quo(doPool)
-	estmiatedDiff := doPool.Sub(cp.Quo(baseAssetPool.Add(price.MulInt(amt))))
+	baseOfferAmount := sdkmath.LegacyNewDecFromInt(amt)
+	estmiatedDiff := doPool.Sub(cp.Quo(baseAssetPool.Add(baseOfferAmount)))
 	require.True(t, estmiatedDiff.Sub(diff.Abs()).LTE(sdkmath.LegacyNewDecWithPrec(1, 6)))
 
 	// invalid recursive swap
@@ -95,9 +95,3 @@ func TestSwapSendMsg(t *testing.T) {
 	balance := input.BankKeeper.GetBalance(input.Ctx, keeper.Addrs[1], core.MicroSDRDenom)
 	require.Equal(t, expectedAmt, balance.Amount)
 }
-
-
-
-
-
-

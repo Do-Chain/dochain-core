@@ -311,6 +311,7 @@ func TestAggregateVoteIterate(t *testing.T) {
 
 func TestTobinTaxGetSet(t *testing.T) {
 	input := CreateTestInput(t)
+	input.OracleKeeper.ClearTobinTaxes(input.Ctx)
 
 	tobinTaxes := map[string]sdkmath.LegacyDec{
 		core.MicroSDRDenom: sdkmath.LegacyNewDec(1),
@@ -387,9 +388,3 @@ func TestValidateFeeder(t *testing.T) {
 	input.StakingKeeper.SetValidator(input.Ctx, sValidator)
 	require.Error(t, input.OracleKeeper.ValidateFeeder(input.Ctx, sdk.AccAddress(addr1), addr))
 }
-
-
-
-
-
-

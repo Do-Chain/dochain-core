@@ -77,7 +77,7 @@ func TestInitGenesis(t *testing.T) {
 		},
 	}
 
-	genesis.AggregateDoRatePrevotes = []types.AggregateDoRatePrevote{
+	genesis.AggregateExchangeRatePrevotes = []types.AggregateDoRatePrevote{
 		{
 			Hash:        "hash",
 			Voter:       "invalid",
@@ -89,7 +89,7 @@ func TestInitGenesis(t *testing.T) {
 		oracle.InitGenesis(input.Ctx, input.OracleKeeper, genesis)
 	})
 
-	genesis.AggregateDoRatePrevotes = []types.AggregateDoRatePrevote{
+	genesis.AggregateExchangeRatePrevotes = []types.AggregateDoRatePrevote{
 		{
 			Hash:        "hash",
 			Voter:       keeper.ValAddrs[0].String(),
@@ -97,9 +97,9 @@ func TestInitGenesis(t *testing.T) {
 		},
 	}
 
-	genesis.AggregateDoRateVotes = []types.AggregateDoRateVote{
+	genesis.AggregateExchangeRateVotes = []types.AggregateDoRateVote{
 		{
-			DoRateTuples: []types.DoRateTuple{
+			ExchangeRateTuples: []types.DoRateTuple{
 				{
 					Denom:        "ukrw",
 					ExchangeRate: sdkmath.LegacyNewDec(10),
@@ -113,9 +113,9 @@ func TestInitGenesis(t *testing.T) {
 		oracle.InitGenesis(input.Ctx, input.OracleKeeper, genesis)
 	})
 
-	genesis.AggregateDoRateVotes = []types.AggregateDoRateVote{
+	genesis.AggregateExchangeRateVotes = []types.AggregateDoRateVote{
 		{
-			DoRateTuples: []types.DoRateTuple{
+			ExchangeRateTuples: []types.DoRateTuple{
 				{
 					Denom:        "ukrw",
 					ExchangeRate: sdkmath.LegacyNewDec(10),
@@ -129,9 +129,3 @@ func TestInitGenesis(t *testing.T) {
 		oracle.InitGenesis(input.Ctx, input.OracleKeeper, genesis)
 	})
 }
-
-
-
-
-
-

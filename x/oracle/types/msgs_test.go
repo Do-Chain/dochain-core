@@ -91,6 +91,8 @@ func TestMsgAggregateDoRateVote(t *testing.T) {
 		{addrs[0], sdk.ValAddress(addrs[0]), "123", exchangeRates, true},
 		{addrs[0], sdk.ValAddress(addrs[0]), "123", invalidExchangeRates, false},
 		{addrs[0], sdk.ValAddress(addrs[0]), "123", abstainExchangeRates, true},
+		{addrs[0], sdk.ValAddress(addrs[0]), randSeq(64), exchangeRates, true},
+		{addrs[0], sdk.ValAddress(addrs[0]), randSeq(65), exchangeRates, false},
 		{addrs[0], sdk.ValAddress(addrs[0]), "123", overFlowExchangeRates, false},
 		{sdk.AccAddress{}, sdk.ValAddress(addrs[0]), "123", exchangeRates, false},
 		{addrs[0], sdk.ValAddress(addrs[0]), "123", "", false},

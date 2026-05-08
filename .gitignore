@@ -59,6 +59,8 @@ CLAUDE.md
 
 # CI cache (populated during Docker builds)
 .cache/
+.gocache/
+.gomodcache/
 
 
 

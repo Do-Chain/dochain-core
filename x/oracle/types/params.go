@@ -33,9 +33,10 @@ var (
 	DefaultVoteThreshold = math.LegacyNewDecWithPrec(50, 2) // 50%
 	DefaultRewardBand    = math.LegacyNewDecWithPrec(2, 2)  // 2% (-1, 1)
 	DefaultTobinTax      = math.LegacyNewDecWithPrec(25, 4) // 0.25%
-    DefaultWhitelist = DenomList{
-        {Name: "udo", TobinTax: math.LegacyZeroDec()},
-    }
+	DefaultWhitelist     = DenomList{
+		{Name: core.MicroDoDenom, TobinTax: math.LegacyZeroDec()},
+		{Name: core.MicroUSDDenom, TobinTax: DefaultTobinTax},
+	}
 	DefaultSlashFraction     = math.LegacyNewDecWithPrec(1, 4) // 0.01%
 	DefaultMinValidPerWindow = math.LegacyNewDecWithPrec(5, 2) // 5%
 )
@@ -246,13 +247,3 @@ func validateMinValidPerWindow(i interface{}) error {
 
 	return nil
 }
-
-
-
-
-
-
-
-
-
-

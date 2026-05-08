@@ -150,20 +150,20 @@ func TestApplyWhitelist(t *testing.T) {
 
 	// no update
 	input.OracleKeeper.ApplyWhitelist(input.Ctx, types.DenomList{
-		types.Denom{
-			Name:    "DO TEST",
+		{
+			Name:     core.MicroUSDDenom,
 			TobinTax: sdkmath.LegacyOneDec(),
 		},
-		types.Denom{
-			Name:    "DO TEST",
+		{
+			Name:     "ukrw",
 			TobinTax: sdkmath.LegacyOneDec(),
 		},
 	}, map[string]sdkmath.LegacyDec{
-		"udotest": sdkmath.LegacyZeroDec(),
-		"ukrw": sdkmath.LegacyZeroDec(),
+		core.MicroUSDDenom: sdkmath.LegacyZeroDec(),
+		core.MicroKRWDenom: sdkmath.LegacyZeroDec(),
 	})
 
-	price, err := input.OracleKeeper.GetTobinTax(input.Ctx, "udotest")
+	price, err := input.OracleKeeper.GetTobinTax(input.Ctx, core.MicroUSDDenom)
 	require.NoError(t, err)
 	require.Equal(t, price, sdkmath.LegacyOneDec())
 
@@ -171,9 +171,9 @@ func TestApplyWhitelist(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, price, sdkmath.LegacyOneDec())
 
-	metadata, ok := input.BankKeeper.GetDenomMetaData(input.Ctx, "udotest")
+	metadata, ok := input.BankKeeper.GetDenomMetaData(input.Ctx, core.MicroUSDDenom)
 	require.True(t, ok)
-	require.Equal(t, metadata.Base, "udotest")
+	require.Equal(t, metadata.Base, core.MicroUSDDenom)
 	require.Equal(t, metadata.Display, "usd")
 	require.Equal(t, len(metadata.DenomUnits), 3)
 	require.Equal(t, metadata.Description, "The native stable token of the do Columbus.")
@@ -185,9 +185,3 @@ func TestApplyWhitelist(t *testing.T) {
 	require.Equal(t, len(metadata.DenomUnits), 3)
 	require.Equal(t, metadata.Description, "The native stable token of the do Columbus.")
 }
-
-
-
-
-
-

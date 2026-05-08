@@ -269,6 +269,15 @@ func CreateTestInput(t *testing.T) TestInput {
 	)
 
 	defaults := types.DefaultParams()
+	defaults.Whitelist = types.DenomList{
+		{Name: core.MicroDoDenom, TobinTax: math.LegacyZeroDec()},
+		{Name: core.MicroSDRDenom, TobinTax: types.DefaultTobinTax},
+		{Name: core.MicroUSDDenom, TobinTax: types.DefaultTobinTax},
+		{Name: core.MicroKRWDenom, TobinTax: types.DefaultTobinTax},
+		{Name: core.MicroCNYDenom, TobinTax: types.DefaultTobinTax},
+		{Name: core.MicroGBPDenom, TobinTax: types.DefaultTobinTax},
+		{Name: core.MicroMNTDenom, TobinTax: types.DefaultTobinTax},
+	}
 	keeper.SetParams(ctx, defaults)
 
 	for _, denom := range defaults.Whitelist {
@@ -300,9 +309,3 @@ func FundAccount(input TestInput, addr sdk.AccAddress, amounts sdk.Coins) error 
 
 	return input.BankKeeper.SendCoinsFromModuleToAccount(input.Ctx, faucetAccountName, addr, amounts)
 }
-
-
-
-
-
-

@@ -362,7 +362,9 @@ func (app *DoApp) Name() string { return app.BaseApp.Name() }
 
 // DefaultGenesis returns a default genesis from the registered AppModuleBasic's.
 func (app *DoApp) DefaultGenesis() map[string]json.RawMessage {
-	return app.BasicModuleManager().DefaultGenesis(app.appCodec)
+	genesis := app.BasicModuleManager().DefaultGenesis(app.appCodec)
+	HardenMainnetGenesisDefaults(genesis)
+	return genesis
 }
 
 func (app *DoApp) Modules() map[string]interface{} {
@@ -567,13 +569,3 @@ func (app *DoApp) setupUpgradeHandlers() {
 func (app *DoApp) GetTxConfig() client.TxConfig {
 	return app.txConfig
 }
-
-
-
-
-
-
-
-
-
-

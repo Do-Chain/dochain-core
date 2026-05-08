@@ -72,23 +72,19 @@ func initAppConfig() (string, interface{}) {
 	srvCfg.IAVLCacheSize = DefaultIAVLCacheSize
 	srvCfg.IAVLDisableFastNode = IavlDisablefastNodeDefault
 
-	// The SDK default minimum gas price is empty, which can cause startup halt
-	// if validators do not set it manually. Keep a chain-safe default here.
-	srvCfg.MinGasPrices = "0udo"
+	// Keep a non-zero default so freshly initialized public nodes do not accept
+	// unlimited zero-fee traffic.
+	srvCfg.MinGasPrices = "0.000006udo"
 
 	// Pruning defaults
-	// Pruning defaults
-srvCfg.Pruning = "custom"
-srvCfg.PruningKeepRecent = "50"
-
-srvCfg.PruningInterval = "10"
-
-
+	srvCfg.Pruning = "custom"
+	srvCfg.PruningKeepRecent = "50"
+	srvCfg.PruningInterval = "10"
 
 	// API defaults
 	srvCfg.API.Enable = true
-	srvCfg.API.Swagger = true
-	srvCfg.API.Address = "tcp://0.0.0.0:1317"
+	srvCfg.API.Swagger = false
+	srvCfg.API.Address = "tcp://127.0.0.1:1317"
 
 	// gRPC defaults
 	srvCfg.GRPC.Enable = true

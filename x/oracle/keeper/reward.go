@@ -20,14 +20,16 @@ func (k Keeper) RewardBallotWinners(
 	voteTargets map[string]math.LegacyDec,
 	ballotWinners map[string]types.Claim,
 ) {
-	// Add Do explicitly for oracle account balance coming from the market swap fee
-	rewardDenoms := make([]string, len(voteTargets)+1)
-	rewardDenoms[0] = core.MicroDoDenom
-
-	i := 1
+	// Add Do explicitly for oracle account balance coming from the market swap
+	// fee, while avoiding duplicate rewards if Do is also a vote target.
+	rewardDenoms := []string{core.MicroDoDenom}
+	seenRewardDenoms := map[string]struct{}{core.MicroDoDenom: {}}
 	for denom := range voteTargets {
-		rewardDenoms[i] = denom
-		i++
+		if _, ok := seenRewardDenoms[denom]; ok {
+			continue
+		}
+		rewardDenoms = append(rewardDenoms, denom)
+		seenRewardDenoms[denom] = struct{}{}
 	}
 
 	// Sum weight of the claims
@@ -97,9 +99,3 @@ func (k Keeper) RewardBallotWinners(
 		panic(fmt.Sprintf("[oracle] Failed to send coins to distribution module %s", err.Error()))
 	}
 }
-
-
-
-
-
-

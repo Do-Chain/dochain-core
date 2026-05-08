@@ -142,8 +142,8 @@ func (msg MsgAggregateDoRateVote) ValidateBasic() error {
 		}
 	}
 
-	if len(msg.Salt) > 4 || len(msg.Salt) < 1 {
-		return errorsmod.Wrap(ErrInvalidSaltLength, "salt length must be [1, 4]")
+	if len(msg.Salt) > 64 || len(msg.Salt) < 1 {
+		return errorsmod.Wrap(ErrInvalidSaltLength, "salt length must be [1, 64]")
 	}
 
 	return nil

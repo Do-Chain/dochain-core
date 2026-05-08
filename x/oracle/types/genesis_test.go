@@ -4,8 +4,9 @@ import (
 	"encoding/json"
 	"testing"
 
-	"github.com/Daviddochain/dochain-core/v4/app"
 	"github.com/Daviddochain/dochain-core/v4/x/oracle/types"
+	"github.com/cosmos/cosmos-sdk/codec"
+	codectypes "github.com/cosmos/cosmos-sdk/codec/types"
 	"github.com/stretchr/testify/require"
 )
 
@@ -18,16 +19,10 @@ func TestGenesisValidation(t *testing.T) {
 }
 
 func TestGetGenesisStateFromAppState(t *testing.T) {
-	cdc := app.MakeEncodingConfig().Marshaler
+	cdc := codec.NewProtoCodec(codectypes.NewInterfaceRegistry())
 	appState := make(map[string]json.RawMessage)
 
 	defaultGenesisState := types.DefaultGenesisState()
 	appState[types.ModuleName] = cdc.MustMarshalJSON(defaultGenesisState)
 	require.Equal(t, *defaultGenesisState, *types.GetGenesisStateFromAppState(cdc, appState))
 }
-
-
-
-
-
-
