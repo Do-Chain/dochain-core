@@ -321,7 +321,7 @@ func TestGenesisAccountValidate(t *testing.T) {
 				{core.MicroDoDenom, types.Schedules{types.Schedule{1554668078, 1654668078, sdkmath.LegacyOneDec()}}},
 				{core.MicroDoDenom, types.Schedules{types.Schedule{1554668078, 1654668078, sdkmath.LegacyOneDec()}}},
 			}),
-			errors.New("cannot have multiple vesting schedules for udotest"),
+			errors.New("cannot have multiple vesting schedules for udo"),
 		},
 	}
 	for _, tt := range tests {

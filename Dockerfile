@@ -2,6 +2,7 @@
 
 ARG source=./
 ARG GO_VERSION="1.24.7"
+ARG ALPINE_RUNTIME_VERSION="3.22"
 ARG BUILDPLATFORM=linux/amd64
 
 # Get Go installation from the official image
@@ -33,7 +34,7 @@ ARG BUILDPLATFORM
 ARG GOOS=linux \
     GOARCH=amd64
 
-ENV GOOS=$GOOS \ 
+ENV GOOS=$GOOS \
     GOARCH=$GOARCH
 
 # NOTE: add libusb-dev to run with LEDGER_ENABLED=true
@@ -76,7 +77,7 @@ RUN set -eux &&\
         WASMVM_URL="${WASMVM_DOWNLOADS}/libwasmvm_muslc.aarch64.a"; \
         LIB_NAME="libwasmvm_muslc.aarch64.a"; \
     else \
-        echo "Unsupported Build Platfrom ${BUILDPLATFORM}"; \
+        echo "Unsupported build platform ${BUILDPLATFORM}"; \
         exit 1; \
     fi; \
     wget ${WASMVM_URL} -O /tmp/${LIB_NAME}; \
@@ -95,7 +96,7 @@ ARG source
 ARG GOOS=linux \
     GOARCH=amd64
 
-ENV GOOS=$GOOS \ 
+ENV GOOS=$GOOS \
     GOARCH=$GOARCH
 
 # Copy the remaining files
@@ -121,9 +122,9 @@ RUN --mount=type=cache,target=/root/.cache/go-build \
 
 ################################################################################
 
-FROM alpine AS do-core
+FROM alpine:${ALPINE_RUNTIME_VERSION} AS do-core
 
-RUN apk update && apk add wget lz4 aria2 curl jq gawk coreutils "zlib>1.2.12-r2" libssl3
+RUN apk add --no-cache wget lz4 aria2 curl jq gawk coreutils "zlib>1.2.12-r2" libssl3
 
 COPY --from=builder-stage-2 /go/bin/dochaind /usr/local/bin/dochaind
 

@@ -3,29 +3,29 @@
 **[do](https://do.money)** is a public, open-source blockchain protocol that provides fundamental infrastructure for a decentralized economy and enables open participation in the creation of new financial primitives to power the innovation of money.
 
 
-**Classic** is the reference implementation of the do protocol, written in Golang. do Core is built atop [Cosmos SDK](https://github.com/cosmos/cosmos-sdk) and uses [Tendermint](https://github.com/tendermint/tendermint) BFT consensus. If you intend to work on do Core source, it is recommended that you familiarize yourself with the concepts in those projects.
+**Classic** is the reference implementation of the do protocol, written in Golang. do Core is built atop [Cosmos SDK](https://github.com/cosmos/cosmos-sdk) and uses [CometBFT](https://github.com/cometbft/cometbft) BFT consensus. If you intend to work on do Core source, it is recommended that you familiarize yourself with the concepts in those projects.
 
 ## Installation
 
 ### Binaries
 
-The easiest way to get started is by downloading a pre-built binary for your operating system. You can find the latest binaries on the [releases](https://github.com/Daviddochain/dochain-core/releases) page.
+The easiest way to get started is by downloading a pre-built binary for your operating system when an official build has been published. You can find published binaries on the [releases](https://github.com/Do-Chain/dochain-core/releases) page. If no release is available for your platform, build from source.
 
 ### From Source
 
 **Step 1. Install Golang**
 
-Go v1.22 is required for do Core.
+Go v1.24.x is required for do Core. This repository currently pins toolchain `go1.24.7` in `go.mod`.
 
 If you haven't already, install Golang by following the [official docs](https://golang.org/doc/install). Make sure that your `GOPATH` and `GOBIN` environment variables are properly set up.
 
 **Step 2: Get do Core source code**
 
-Use `git` to retrieve do Core from the [official repo](https://github.com/do-money/core/) and checkout the `main` branch. This branch contains the latest stable release, which will install the `dochaind` binary.
+Use `git` to retrieve do Core from the [official repo](https://github.com/Do-Chain/dochain-core/) and checkout the `main` branch. This branch contains the latest development code, which will install the `dochaind` binary.
 
 ```bash
-git clone https://github.com/Daviddochain/dochain-core/
-cd core
+git clone https://github.com/Do-Chain/dochain-core/
+cd dochain-core
 git checkout main
 ```
 

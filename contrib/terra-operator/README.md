@@ -1,5 +1,7 @@
 # do Core Dockerized
 
+Do not reuse `keys.json` or any mnemonic in this directory on a live network. The committed keys are public test fixtures for local/operator testing only.
+
 ## Common usage examples 
 
 ### Mainnet 

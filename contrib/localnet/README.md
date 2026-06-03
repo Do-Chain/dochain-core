@@ -1,5 +1,7 @@
 This folder is used for simulating localnet
 
+Do not reuse any mnemonic or key material in this directory on a live network. The committed keys are public test fixtures for local simulation only.
+
 # I. History simulation
 Run these two commands for simulation
 
