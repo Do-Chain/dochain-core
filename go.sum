@@ -653,10 +653,10 @@ github.com/99designs/go-keychain v0.0.0-20191008050251-8e49817e8af4/go.mod h1:hN
 github.com/Azure/go-ansiterm v0.0.0-20230124172434-306776ec8161 h1:L/gRVlceqvL25UVaW/CKtUDjefjrs0SPonmDGUVOYP0=
 github.com/Azure/go-ansiterm v0.0.0-20230124172434-306776ec8161/go.mod h1:xomTg63KZ2rFqZQzSB4Vz2SUXa1BpHTVz9L5PTmPC4E=
 github.com/BurntSushi/toml v0.3.1/go.mod h1:xHWCNGjB5oqiDr8zfno3MHue2Ht5sIBksp03qcyfWMU=
-github.com/CosmWasm/wasmd v0.61.11 h1:p7kAJACHHexQQSdoFgCvxa1pkbZotDEeAZCsyJhvFrE=
-github.com/CosmWasm/wasmd v0.61.11/go.mod h1:pfuEzkWBQ24nVfMrMBNGHh5Gmr/RBk4kIdQGiIIV68A=
-github.com/CosmWasm/wasmvm/v3 v3.0.4 h1:nccZU7jzH3bSMnHzXE7JjpSfeXayv6IUcpugdRVX5uc=
-github.com/CosmWasm/wasmvm/v3 v3.0.4/go.mod h1:oknpb1bFERvvKcY7vHRp1F/Y/z66xVrsl7n9uWkOAlM=
+github.com/CosmWasm/wasmd v0.61.13 h1:n9qdUV+FPcrFAEwtxABnDRXD8RjwSzKRfNv4qT21hks=
+github.com/CosmWasm/wasmd v0.61.13/go.mod h1:Ij2065xzbtfLZrhrQ6a0nOGZz4wiemZajb2L/rAcKbM=
+github.com/CosmWasm/wasmvm/v3 v3.0.6 h1:ij0srElmVfTxQWEgU4hnNxhs0LUIrW8sj51alwMRwMo=
+github.com/CosmWasm/wasmvm/v3 v3.0.6/go.mod h1:oknpb1bFERvvKcY7vHRp1F/Y/z66xVrsl7n9uWkOAlM=
 github.com/DataDog/datadog-go v3.2.0+incompatible/go.mod h1:LButxg5PwREeZtORoXG3tL4fMGNddJ+vMq1mwgfaqoQ=
 github.com/DataDog/datadog-go v4.8.3+incompatible h1:fNGaYSuObuQb5nzeTQqowRAd9bpDIRRV4/gUtIBjh8Q=
 github.com/DataDog/datadog-go v4.8.3+incompatible/go.mod h1:LButxg5PwREeZtORoXG3tL4fMGNddJ+vMq1mwgfaqoQ=

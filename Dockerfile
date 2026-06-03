@@ -101,7 +101,8 @@ ENV GOOS=$GOOS \
 # Copy the remaining files
 COPY ${source} .
 
-# Build app binary
+# Build the deployable node binary. Some legacy test/e2e helper packages are
+# intentionally outside the production command path.
 RUN --mount=type=cache,target=/root/.cache/go-build \
     --mount=type=cache,target=/root/go/pkg/mod \
     go install \
@@ -117,7 +118,7 @@ RUN --mount=type=cache,target=/root/.cache/go-build \
             -X github.com/cosmos/cosmos-sdk/version.BuildTags='netgo,muslc' \
         " \
         -trimpath \
-        ./...
+        ./cmd/dochaind
 
 ################################################################################
 
