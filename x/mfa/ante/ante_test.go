@@ -150,6 +150,101 @@ func TestEnableRequiresInitialMFAApproval(t *testing.T) {
 	require.False(t, fx.keeper.HasPolicy(fx.ctx, account))
 }
 
+func TestSetGuardianRequiresMFAApproval(t *testing.T) {
+	fx := newFixture(t)
+	account, _, mfaPriv := fx.addAccount(t, 4)
+	guardian, _, _ := fx.addAccount(t, 1)
+	require.NoError(t, fx.keeper.SetPolicy(fx.ctx, mfatypes.NewPolicy(account, mfaPriv.PubKey().Bytes())))
+
+	tx := newTestTx(nil, "", []sdk.AccAddress{account})
+	tx.memo = controlMemo(t, &mfatypes.MemoMFA{
+		Approvals: []mfatypes.MemoApproval{approval(t, fx.ctx, fx.cdc, tx, account, mfaPriv, 1_700_000_300, 4)},
+		SetGuardian: &mfatypes.MemoSetGuardian{
+			Account:         account.String(),
+			GuardianAddress: guardian.String(),
+		},
+	})
+
+	_, err := fx.decorator.AnteHandle(fx.ctx, tx, false, passthrough)
+	require.NoError(t, err)
+	policy, found := fx.keeper.GetPolicy(fx.ctx, account)
+	require.True(t, found)
+	require.Equal(t, guardian.String(), policy.GuardianAddress)
+}
+
+func TestGuardianApprovalCanDisableMFA(t *testing.T) {
+	fx := newFixture(t)
+	account, _, mfaPriv := fx.addAccount(t, 4)
+	guardian, guardianPriv, _ := fx.addAccount(t, 1)
+	policy := mfatypes.NewPolicy(account, mfaPriv.PubKey().Bytes())
+	policy.GuardianAddress = guardian.String()
+	require.NoError(t, fx.keeper.SetPolicy(fx.ctx, policy))
+
+	tx := newTestTx(nil, "", []sdk.AccAddress{account})
+	tx.memo = controlMemo(t, &mfatypes.MemoMFA{
+		Disable:          &mfatypes.MemoDisable{Account: account.String()},
+		GuardianApproval: guardianApproval(t, fx.ctx, fx.cdc, tx, account, guardian, guardianPriv, mfatypes.RecoveryActionDisable, "", 1_700_000_300, 4),
+	})
+
+	_, err := fx.decorator.AnteHandle(fx.ctx, tx, false, passthrough)
+	require.NoError(t, err)
+	require.False(t, fx.keeper.HasPolicy(fx.ctx, account))
+}
+
+func TestDelayedRecoveryStartAndExecuteRotatesMFA(t *testing.T) {
+	fx := newFixture(t)
+	account, _, mfaPriv := fx.addAccount(t, 4)
+	newMfaPriv := secp256k1.GenPrivKey()
+	require.NoError(t, fx.keeper.SetPolicy(fx.ctx, mfatypes.NewPolicy(account, mfaPriv.PubKey().Bytes())))
+
+	startTx := newTestTx([]sdk.Msg{selfSend(account)}, "", []sdk.AccAddress{account})
+	startTx.memo = controlMemo(t, &mfatypes.MemoMFA{
+		RecoveryStart: &mfatypes.MemoRecoveryStart{
+			Account:        account.String(),
+			Action:         mfatypes.RecoveryActionRotate,
+			ApprovalPubKey: mfatypes.EncodeApprovalPubKey(newMfaPriv.PubKey().Bytes()),
+		},
+	})
+	_, err := fx.decorator.AnteHandle(fx.ctx, startTx, false, passthrough)
+	require.NoError(t, err)
+	policy, found := fx.keeper.GetPolicy(fx.ctx, account)
+	require.True(t, found)
+	require.NotNil(t, policy.PendingRecovery)
+
+	executeTx := newTestTx([]sdk.Msg{selfSend(account)}, "", []sdk.AccAddress{account})
+	executeTx.memo = controlMemo(t, &mfatypes.MemoMFA{
+		RecoveryExecute: &mfatypes.MemoRecoveryExecute{Account: account.String()},
+	})
+	_, err = fx.decorator.AnteHandle(fx.ctx, executeTx, false, passthrough)
+	require.ErrorIs(t, err, mfatypes.ErrMFARequired)
+
+	fx.ctx = fx.ctx.WithBlockTime(fx.ctx.BlockTime().Add(time.Duration(mfatypes.RecoveryDelaySeconds) * time.Second))
+	_, err = fx.decorator.AnteHandle(fx.ctx, executeTx, false, passthrough)
+	require.NoError(t, err)
+	policy, found = fx.keeper.GetPolicy(fx.ctx, account)
+	require.True(t, found)
+	require.Equal(t, newMfaPriv.PubKey().Bytes(), policy.ApprovalPubKey)
+	require.Nil(t, policy.PendingRecovery)
+}
+
+func TestDelayedRecoveryCannotBypassOutgoingSend(t *testing.T) {
+	fx := newFixture(t)
+	account, _, mfaPriv := fx.addAccount(t, 4)
+	recipient := sdk.AccAddress("recipient____________")
+	require.NoError(t, fx.keeper.SetPolicy(fx.ctx, mfatypes.NewPolicy(account, mfaPriv.PubKey().Bytes())))
+
+	tx := newTestTx([]sdk.Msg{banktypes.NewMsgSend(account, recipient, sdk.NewCoins(sdk.NewInt64Coin(core.MicroDoDenom, 2)))}, "", []sdk.AccAddress{account})
+	tx.memo = controlMemo(t, &mfatypes.MemoMFA{
+		RecoveryStart: &mfatypes.MemoRecoveryStart{
+			Account: account.String(),
+			Action:  mfatypes.RecoveryActionDisable,
+		},
+	})
+
+	_, err := fx.decorator.AnteHandle(fx.ctx, tx, false, passthrough)
+	require.ErrorIs(t, err, mfatypes.ErrInvalidMFAApproval)
+}
+
 func (f fixture) addAccount(t *testing.T, sequence uint64) (sdk.AccAddress, *secp256k1.PrivKey, *secp256k1.PrivKey) {
 	t.Helper()
 	walletPriv := secp256k1.GenPrivKey()
@@ -182,6 +277,30 @@ func approval(t *testing.T, ctx sdk.Context, cdc codec.Codec, tx testTx, account
 		ExpiresAt: expiresAt,
 		Signature: mfatypes.EncodeApprovalSignature(signature),
 	}
+}
+
+func guardianApproval(t *testing.T, ctx sdk.Context, cdc codec.Codec, tx testTx, account sdk.AccAddress, guardian sdk.AccAddress, priv *secp256k1.PrivKey, action string, approvalPubKey string, expiresAt int64, sequence uint64) *mfatypes.MemoGuardianApproval {
+	t.Helper()
+	payload, err := mfaante.BuildGuardianApprovalPayload(ctx, tx, cdc, account, guardian.String(), action, approvalPubKey, expiresAt, []mfatypes.SignerSequence{{
+		Address:  account.String(),
+		Sequence: sequence,
+	}})
+	require.NoError(t, err)
+	signature, err := priv.Sign(payload.SignBytes())
+	require.NoError(t, err)
+	return &mfatypes.MemoGuardianApproval{
+		Account:         account.String(),
+		GuardianAddress: guardian.String(),
+		Action:          action,
+		ApprovalPubKey:  approvalPubKey,
+		GuardianPubKey:  mfatypes.EncodeApprovalPubKey(priv.PubKey().Bytes()),
+		ExpiresAt:       expiresAt,
+		Signature:       mfatypes.EncodeApprovalSignature(signature),
+	}
+}
+
+func selfSend(account sdk.AccAddress) sdk.Msg {
+	return banktypes.NewMsgSend(account, account, sdk.NewCoins(sdk.NewInt64Coin(core.MicroDoDenom, 1)))
 }
 
 func controlMemo(t *testing.T, mfa *mfatypes.MemoMFA) string {

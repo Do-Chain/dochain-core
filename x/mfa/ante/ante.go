@@ -7,6 +7,7 @@ import (
 	"fmt"
 
 	errorsmod "cosmossdk.io/errors"
+	sdkmath "cosmossdk.io/math"
 	wasmtypes "github.com/CosmWasm/wasmd/x/wasm/types"
 	legacywasmtypes "github.com/Daviddochain/dochain-core/v4/custom/wasm/types/legacy"
 	core "github.com/Daviddochain/dochain-core/v4/types"
@@ -56,11 +57,19 @@ func (d MFARequirementDecorator) AnteHandle(ctx sdk.Context, tx sdk.Tx, simulate
 	}
 
 	if mfaMemo != nil {
-		if mfaMemo.Enable != nil && mfaMemo.Disable != nil {
-			return ctx, errorsmod.Wrap(mfatypes.ErrInvalidMFAApproval, "memo cannot enable and disable mfa in the same transaction")
+		if err := validateControlActionCount(mfaMemo); err != nil {
+			return ctx, err
 		}
 		if err := d.addControlRequirements(ctx, protectedAccounts, mfaMemo); err != nil {
 			return ctx, err
+		}
+		if bypassAccount, ok, err := recoveryBypassAccount(mfaMemo); err != nil {
+			return ctx, err
+		} else if ok {
+			if err := requireRecoveryControlCarrier(tx, bypassAccount); err != nil {
+				return ctx, err
+			}
+			delete(protectedAccounts, bypassAccount.String())
 		}
 	}
 
@@ -72,7 +81,7 @@ func (d MFARequirementDecorator) AnteHandle(ctx sdk.Context, tx sdk.Tx, simulate
 		if mfaMemo == nil {
 			return ctx, errorsmod.Wrap(mfatypes.ErrMFARequired, "missing mfa memo")
 		}
-		if err := d.verifyApprovals(ctx, tx, requiredAccounts, mfaMemo.Approvals); err != nil {
+		if err := d.verifyApprovals(ctx, tx, requiredAccounts, mfaMemo); err != nil {
 			return ctx, err
 		}
 	} else if memoErr != nil && containsMFAKey(getMemo(tx)) {
@@ -111,6 +120,53 @@ func (d MFARequirementDecorator) addControlRequirements(ctx sdk.Context, account
 		}
 		accounts[addr.String()] = addr
 	}
+	if mfaMemo.SetGuardian != nil {
+		addr, err := sdk.AccAddressFromBech32(mfaMemo.SetGuardian.Account)
+		if err != nil {
+			return errorsmod.Wrapf(sdkerrors.ErrInvalidAddress, "invalid mfa guardian account: %s", err)
+		}
+		if _, found := d.mfaKeeper.GetPolicy(ctx, addr); !found {
+			return errorsmod.Wrap(mfatypes.ErrInvalidMFAPolicy, "cannot set a guardian for an account without an active mfa policy")
+		}
+		if err := validateOptionalGuardianAddress(mfaMemo.SetGuardian.GuardianAddress); err != nil {
+			return err
+		}
+		accounts[addr.String()] = addr
+	}
+	if mfaMemo.RecoveryStart != nil {
+		addr, err := sdk.AccAddressFromBech32(mfaMemo.RecoveryStart.Account)
+		if err != nil {
+			return errorsmod.Wrapf(sdkerrors.ErrInvalidAddress, "invalid mfa recovery account: %s", err)
+		}
+		if _, found := d.mfaKeeper.GetPolicy(ctx, addr); !found {
+			return errorsmod.Wrap(mfatypes.ErrInvalidMFAPolicy, "cannot start recovery for an account without an active mfa policy")
+		}
+		if err := validateRecoveryRequest(mfaMemo.RecoveryStart.Action, mfaMemo.RecoveryStart.ApprovalPubKey); err != nil {
+			return err
+		}
+	}
+	if mfaMemo.RecoveryCancel != nil {
+		addr, err := sdk.AccAddressFromBech32(mfaMemo.RecoveryCancel.Account)
+		if err != nil {
+			return errorsmod.Wrapf(sdkerrors.ErrInvalidAddress, "invalid mfa recovery account: %s", err)
+		}
+		if _, found := d.mfaKeeper.GetPolicy(ctx, addr); !found {
+			return errorsmod.Wrap(mfatypes.ErrInvalidMFAPolicy, "cannot cancel recovery for an account without an active mfa policy")
+		}
+	}
+	if mfaMemo.RecoveryExecute != nil {
+		addr, err := sdk.AccAddressFromBech32(mfaMemo.RecoveryExecute.Account)
+		if err != nil {
+			return errorsmod.Wrapf(sdkerrors.ErrInvalidAddress, "invalid mfa recovery account: %s", err)
+		}
+		policy, found := d.mfaKeeper.GetPolicy(ctx, addr)
+		if !found {
+			return errorsmod.Wrap(mfatypes.ErrInvalidMFAPolicy, "cannot execute recovery for an account without an active mfa policy")
+		}
+		if policy.PendingRecovery == nil {
+			return errorsmod.Wrap(mfatypes.ErrInvalidMFAPolicy, "no pending mfa recovery request")
+		}
+	}
 	return nil
 }
 
@@ -145,6 +201,9 @@ func (d MFARequirementDecorator) verifyInitialEnableApproval(ctx sdk.Context, tx
 	if err := mfatypes.NewPolicy(account, pubKey).ValidateBasic(); err != nil {
 		return errorsmod.Wrap(mfatypes.ErrInvalidMFAPolicy, err.Error())
 	}
+	if err := validateOptionalGuardianAddress(mfaMemo.Enable.GuardianAddress); err != nil {
+		return err
+	}
 
 	approval, found := approvalForAccount(mfaMemo.Approvals, account.String())
 	if !found {
@@ -167,13 +226,9 @@ func (d MFARequirementDecorator) verifyInitialEnableApproval(ctx sdk.Context, tx
 	return nil
 }
 
-func (d MFARequirementDecorator) verifyApprovals(ctx sdk.Context, tx sdk.Tx, required map[string]sdk.AccAddress, approvals []mfatypes.MemoApproval) error {
-	if len(approvals) == 0 {
-		return errorsmod.Wrap(mfatypes.ErrMFARequired, "missing mfa approvals")
-	}
-
-	approvalByAccount := make(map[string]mfatypes.MemoApproval, len(approvals))
-	for _, approval := range approvals {
+func (d MFARequirementDecorator) verifyApprovals(ctx sdk.Context, tx sdk.Tx, required map[string]sdk.AccAddress, mfaMemo *mfatypes.MemoMFA) error {
+	approvalByAccount := make(map[string]mfatypes.MemoApproval, len(mfaMemo.Approvals))
+	for _, approval := range mfaMemo.Approvals {
 		approvalByAccount[approval.Account] = approval
 	}
 
@@ -193,25 +248,92 @@ func (d MFARequirementDecorator) verifyApprovals(ctx sdk.Context, tx sdk.Tx, req
 			continue
 		}
 		approval, found := approvalByAccount[account]
-		if !found {
-			return errorsmod.Wrapf(mfatypes.ErrMFARequired, "missing mfa approval for %s", account)
-		}
-		if approval.ExpiresAt <= ctx.BlockTime().Unix() {
-			return errorsmod.Wrapf(mfatypes.ErrExpiredMFAApproval, "mfa approval for %s expired", account)
-		}
-		signature, err := mfatypes.DecodeApprovalSignature(approval.Signature)
-		if err != nil {
-			return errorsmod.Wrapf(mfatypes.ErrInvalidMFAApproval, "invalid mfa signature encoding for %s", account)
-		}
+		if found {
+			if approval.ExpiresAt <= ctx.BlockTime().Unix() {
+				return errorsmod.Wrapf(mfatypes.ErrExpiredMFAApproval, "mfa approval for %s expired", account)
+			}
+			signature, err := mfatypes.DecodeApprovalSignature(approval.Signature)
+			if err != nil {
+				return errorsmod.Wrapf(mfatypes.ErrInvalidMFAApproval, "invalid mfa signature encoding for %s", account)
+			}
 
-		payload := newApprovalPayload(ctx, account, approval.ExpiresAt, timeoutHeight, msgsHash, signers)
-		pubKey := secp256k1.PubKey{Key: policy.ApprovalPubKey}
-		if !pubKey.VerifySignature(payload.SignBytes(), signature) {
+			payload := newApprovalPayload(ctx, account, approval.ExpiresAt, timeoutHeight, msgsHash, signers)
+			pubKey := secp256k1.PubKey{Key: policy.ApprovalPubKey}
+			if pubKey.VerifySignature(payload.SignBytes(), signature) {
+				continue
+			}
 			return errorsmod.Wrapf(mfatypes.ErrInvalidMFAApproval, "mfa signature does not match policy for %s", account)
 		}
+
+		guardianOK, err := verifyGuardianApproval(ctx, account, policy, mfaMemo, timeoutHeight, msgsHash, signers)
+		if err != nil {
+			return err
+		}
+		if guardianOK {
+			continue
+		}
+
+		return errorsmod.Wrapf(mfatypes.ErrMFARequired, "missing mfa approval for %s", account)
 	}
 
 	return nil
+}
+
+func verifyGuardianApproval(ctx sdk.Context, account string, policy mfatypes.Policy, mfaMemo *mfatypes.MemoMFA, timeoutHeight uint64, msgsHash string, signers []mfatypes.SignerSequence) (bool, error) {
+	if mfaMemo.GuardianApproval == nil {
+		return false, nil
+	}
+	if policy.GuardianAddress == "" {
+		return false, errorsmod.Wrap(mfatypes.ErrInvalidMFAApproval, "account has no mfa guardian")
+	}
+	action, approvalPubKey, ok := guardianControlAction(mfaMemo)
+	if !ok {
+		return false, errorsmod.Wrap(mfatypes.ErrInvalidMFAApproval, "guardian approval can only be used for disable or rotate")
+	}
+
+	approval := mfaMemo.GuardianApproval
+	if approval.Account != account {
+		return false, nil
+	}
+	if approval.GuardianAddress != policy.GuardianAddress {
+		return false, errorsmod.Wrap(mfatypes.ErrInvalidMFAApproval, "guardian approval does not match policy guardian")
+	}
+	if approval.Action != action || approval.ApprovalPubKey != approvalPubKey {
+		return false, errorsmod.Wrap(mfatypes.ErrInvalidMFAApproval, "guardian approval does not match requested mfa action")
+	}
+	if approval.ExpiresAt <= ctx.BlockTime().Unix() {
+		return false, errorsmod.Wrapf(mfatypes.ErrExpiredMFAApproval, "guardian approval for %s expired", account)
+	}
+
+	guardianPubKey, err := mfatypes.DecodeApprovalPubKey(approval.GuardianPubKey)
+	if err != nil {
+		return false, errorsmod.Wrap(mfatypes.ErrInvalidMFAApproval, "invalid guardian public key encoding")
+	}
+	pubKey := secp256k1.PubKey{Key: guardianPubKey}
+	guardianAddress := sdk.AccAddress(pubKey.Address()).String()
+	if guardianAddress != policy.GuardianAddress {
+		return false, errorsmod.Wrap(mfatypes.ErrInvalidMFAApproval, "guardian public key does not match policy guardian address")
+	}
+
+	signature, err := mfatypes.DecodeApprovalSignature(approval.Signature)
+	if err != nil {
+		return false, errorsmod.Wrap(mfatypes.ErrInvalidMFAApproval, "invalid guardian signature encoding")
+	}
+	payload := newGuardianApprovalPayload(ctx, account, policy.GuardianAddress, action, approvalPubKey, approval.ExpiresAt, timeoutHeight, msgsHash, signers)
+	if !pubKey.VerifySignature(payload.SignBytes(), signature) {
+		return false, errorsmod.Wrap(mfatypes.ErrInvalidMFAApproval, "guardian signature does not match requested mfa action")
+	}
+	return true, nil
+}
+
+func guardianControlAction(mfaMemo *mfatypes.MemoMFA) (string, string, bool) {
+	if mfaMemo.Disable != nil {
+		return mfatypes.RecoveryActionDisable, "", true
+	}
+	if mfaMemo.Enable != nil {
+		return mfatypes.RecoveryActionRotate, mfaMemo.Enable.ApprovalPubKey, true
+	}
+	return "", "", false
 }
 
 func (d MFARequirementDecorator) approvalPayload(ctx sdk.Context, tx sdk.Tx, account string, expiresAt int64) (mfatypes.ApprovalPayload, error) {
@@ -239,13 +361,23 @@ func (d MFARequirementDecorator) applyControlActions(ctx sdk.Context, tx sdk.Tx,
 		if err != nil {
 			return errorsmod.Wrap(mfatypes.ErrInvalidMFAPolicy, "invalid mfa approval public key encoding")
 		}
-		if err := d.mfaKeeper.SetPolicy(ctx, mfatypes.NewPolicy(account, pubKey)); err != nil {
+		guardianAddress := mfaMemo.Enable.GuardianAddress
+		if existing, found := d.mfaKeeper.GetPolicy(ctx, account); found && guardianAddress == "" {
+			guardianAddress = existing.GuardianAddress
+		}
+		if err := validateOptionalGuardianAddress(guardianAddress); err != nil {
+			return err
+		}
+		policy := mfatypes.NewPolicy(account, pubKey)
+		policy.GuardianAddress = guardianAddress
+		if err := d.mfaKeeper.SetPolicy(ctx, policy); err != nil {
 			return errorsmod.Wrap(mfatypes.ErrInvalidMFAPolicy, err.Error())
 		}
 		ctx.EventManager().EmitEvent(sdk.NewEvent(
 			mfatypes.ModuleName,
 			sdk.NewAttribute("action", "enable"),
 			sdk.NewAttribute("account", account.String()),
+			sdk.NewAttribute("guardian", guardianAddress),
 		))
 	}
 
@@ -265,6 +397,130 @@ func (d MFARequirementDecorator) applyControlActions(ctx sdk.Context, tx sdk.Tx,
 		))
 	}
 
+	if mfaMemo.SetGuardian != nil {
+		account, err := sdk.AccAddressFromBech32(mfaMemo.SetGuardian.Account)
+		if err != nil {
+			return errorsmod.Wrapf(sdkerrors.ErrInvalidAddress, "invalid mfa guardian account: %s", err)
+		}
+		if err := requireTxSigner(tx, account); err != nil {
+			return err
+		}
+		guardianAddress := mfaMemo.SetGuardian.GuardianAddress
+		if err := validateOptionalGuardianAddress(guardianAddress); err != nil {
+			return err
+		}
+		policy, found := d.mfaKeeper.GetPolicy(ctx, account)
+		if !found {
+			return errorsmod.Wrap(mfatypes.ErrInvalidMFAPolicy, "cannot set a guardian for an account without an active mfa policy")
+		}
+		policy.GuardianAddress = guardianAddress
+		if err := d.mfaKeeper.SetPolicy(ctx, policy); err != nil {
+			return errorsmod.Wrap(mfatypes.ErrInvalidMFAPolicy, err.Error())
+		}
+		ctx.EventManager().EmitEvent(sdk.NewEvent(
+			mfatypes.ModuleName,
+			sdk.NewAttribute("action", "set_guardian"),
+			sdk.NewAttribute("account", account.String()),
+			sdk.NewAttribute("guardian", guardianAddress),
+		))
+	}
+
+	if mfaMemo.RecoveryStart != nil {
+		account, err := sdk.AccAddressFromBech32(mfaMemo.RecoveryStart.Account)
+		if err != nil {
+			return errorsmod.Wrapf(sdkerrors.ErrInvalidAddress, "invalid mfa recovery account: %s", err)
+		}
+		if err := requireTxSigner(tx, account); err != nil {
+			return err
+		}
+		policy, found := d.mfaKeeper.GetPolicy(ctx, account)
+		if !found {
+			return errorsmod.Wrap(mfatypes.ErrInvalidMFAPolicy, "cannot start recovery for an account without an active mfa policy")
+		}
+		approvalPubKey, err := recoveryApprovalPubKey(mfaMemo.RecoveryStart.Action, mfaMemo.RecoveryStart.ApprovalPubKey)
+		if err != nil {
+			return err
+		}
+		requestedAt := ctx.BlockTime().Unix()
+		policy.PendingRecovery = &mfatypes.PendingRecovery{
+			Action:         mfaMemo.RecoveryStart.Action,
+			ApprovalPubKey: approvalPubKey,
+			RequestedAt:    requestedAt,
+			ExecuteAfter:   requestedAt + mfatypes.RecoveryDelaySeconds,
+		}
+		if err := d.mfaKeeper.SetPolicy(ctx, policy); err != nil {
+			return errorsmod.Wrap(mfatypes.ErrInvalidMFAPolicy, err.Error())
+		}
+		ctx.EventManager().EmitEvent(sdk.NewEvent(
+			mfatypes.ModuleName,
+			sdk.NewAttribute("action", "recovery_start"),
+			sdk.NewAttribute("account", account.String()),
+			sdk.NewAttribute("recovery_action", mfaMemo.RecoveryStart.Action),
+			sdk.NewAttribute("execute_after", fmt.Sprintf("%d", requestedAt+mfatypes.RecoveryDelaySeconds)),
+		))
+	}
+
+	if mfaMemo.RecoveryCancel != nil {
+		account, err := sdk.AccAddressFromBech32(mfaMemo.RecoveryCancel.Account)
+		if err != nil {
+			return errorsmod.Wrapf(sdkerrors.ErrInvalidAddress, "invalid mfa recovery account: %s", err)
+		}
+		if err := requireTxSigner(tx, account); err != nil {
+			return err
+		}
+		policy, found := d.mfaKeeper.GetPolicy(ctx, account)
+		if !found {
+			return errorsmod.Wrap(mfatypes.ErrInvalidMFAPolicy, "cannot cancel recovery for an account without an active mfa policy")
+		}
+		policy.PendingRecovery = nil
+		if err := d.mfaKeeper.SetPolicy(ctx, policy); err != nil {
+			return errorsmod.Wrap(mfatypes.ErrInvalidMFAPolicy, err.Error())
+		}
+		ctx.EventManager().EmitEvent(sdk.NewEvent(
+			mfatypes.ModuleName,
+			sdk.NewAttribute("action", "recovery_cancel"),
+			sdk.NewAttribute("account", account.String()),
+		))
+	}
+
+	if mfaMemo.RecoveryExecute != nil {
+		account, err := sdk.AccAddressFromBech32(mfaMemo.RecoveryExecute.Account)
+		if err != nil {
+			return errorsmod.Wrapf(sdkerrors.ErrInvalidAddress, "invalid mfa recovery account: %s", err)
+		}
+		if err := requireTxSigner(tx, account); err != nil {
+			return err
+		}
+		policy, found := d.mfaKeeper.GetPolicy(ctx, account)
+		if !found {
+			return errorsmod.Wrap(mfatypes.ErrInvalidMFAPolicy, "cannot execute recovery for an account without an active mfa policy")
+		}
+		if policy.PendingRecovery == nil {
+			return errorsmod.Wrap(mfatypes.ErrInvalidMFAPolicy, "no pending mfa recovery request")
+		}
+		if policy.PendingRecovery.ExecuteAfter > ctx.BlockTime().Unix() {
+			return errorsmod.Wrapf(mfatypes.ErrMFARequired, "mfa recovery cannot execute before %d", policy.PendingRecovery.ExecuteAfter)
+		}
+		switch policy.PendingRecovery.Action {
+		case mfatypes.RecoveryActionDisable:
+			d.mfaKeeper.DeletePolicy(ctx, account)
+		case mfatypes.RecoveryActionRotate:
+			newPolicy := mfatypes.NewPolicy(account, policy.PendingRecovery.ApprovalPubKey)
+			newPolicy.GuardianAddress = policy.GuardianAddress
+			if err := d.mfaKeeper.SetPolicy(ctx, newPolicy); err != nil {
+				return errorsmod.Wrap(mfatypes.ErrInvalidMFAPolicy, err.Error())
+			}
+		default:
+			return errorsmod.Wrapf(mfatypes.ErrInvalidMFAPolicy, "invalid mfa recovery action: %s", policy.PendingRecovery.Action)
+		}
+		ctx.EventManager().EmitEvent(sdk.NewEvent(
+			mfatypes.ModuleName,
+			sdk.NewAttribute("action", "recovery_execute"),
+			sdk.NewAttribute("account", account.String()),
+			sdk.NewAttribute("recovery_action", policy.PendingRecovery.Action),
+		))
+	}
+
 	return nil
 }
 
@@ -275,6 +531,111 @@ func approvalForAccount(approvals []mfatypes.MemoApproval, account string) (mfat
 		}
 	}
 	return mfatypes.MemoApproval{}, false
+}
+
+func validateControlActionCount(mfaMemo *mfatypes.MemoMFA) error {
+	actions := 0
+	if mfaMemo.Enable != nil {
+		actions++
+	}
+	if mfaMemo.Disable != nil {
+		actions++
+	}
+	if mfaMemo.SetGuardian != nil {
+		actions++
+	}
+	if mfaMemo.RecoveryStart != nil {
+		actions++
+	}
+	if mfaMemo.RecoveryCancel != nil {
+		actions++
+	}
+	if mfaMemo.RecoveryExecute != nil {
+		actions++
+	}
+	if actions > 1 {
+		return errorsmod.Wrap(mfatypes.ErrInvalidMFAApproval, "memo can only contain one mfa control action")
+	}
+	return nil
+}
+
+func recoveryBypassAccount(mfaMemo *mfatypes.MemoMFA) (sdk.AccAddress, bool, error) {
+	var account string
+	switch {
+	case mfaMemo.RecoveryStart != nil:
+		account = mfaMemo.RecoveryStart.Account
+	case mfaMemo.RecoveryCancel != nil:
+		account = mfaMemo.RecoveryCancel.Account
+	case mfaMemo.RecoveryExecute != nil:
+		account = mfaMemo.RecoveryExecute.Account
+	default:
+		return nil, false, nil
+	}
+
+	addr, err := sdk.AccAddressFromBech32(account)
+	if err != nil {
+		return nil, false, errorsmod.Wrapf(sdkerrors.ErrInvalidAddress, "invalid mfa recovery account: %s", err)
+	}
+	return addr, true, nil
+}
+
+func requireRecoveryControlCarrier(tx sdk.Tx, account sdk.AccAddress) error {
+	msgs := tx.GetMsgs()
+	if len(msgs) == 0 {
+		return nil
+	}
+	if len(msgs) != 1 {
+		return errorsmod.Wrap(mfatypes.ErrInvalidMFAApproval, "mfa recovery transaction cannot include other messages")
+	}
+
+	msg, ok := msgs[0].(*banktypes.MsgSend)
+	if !ok {
+		return errorsmod.Wrap(mfatypes.ErrInvalidMFAApproval, "mfa recovery transaction must use the wallet self-send control message")
+	}
+	if msg.FromAddress != account.String() || msg.ToAddress != account.String() {
+		return errorsmod.Wrap(mfatypes.ErrInvalidMFAApproval, "mfa recovery control transaction must be a self-send")
+	}
+	if !msg.Amount.AmountOf(core.MicroDoDenom).Equal(sdkmath.OneInt()) || !msg.Amount.Equal(sdk.NewCoins(sdk.NewCoin(core.MicroDoDenom, sdkmath.OneInt()))) {
+		return errorsmod.Wrap(mfatypes.ErrInvalidMFAApproval, "mfa recovery control transaction must send exactly 1 udo to self")
+	}
+	return nil
+}
+
+func validateOptionalGuardianAddress(address string) error {
+	if address == "" {
+		return nil
+	}
+	if _, err := sdk.AccAddressFromBech32(address); err != nil {
+		return errorsmod.Wrapf(sdkerrors.ErrInvalidAddress, "invalid mfa guardian address: %s", err)
+	}
+	return nil
+}
+
+func validateRecoveryRequest(action, approvalPubKey string) error {
+	if !mfatypes.IsRecoveryAction(action) {
+		return errorsmod.Wrapf(mfatypes.ErrInvalidMFAPolicy, "invalid mfa recovery action: %s", action)
+	}
+	if _, err := recoveryApprovalPubKey(action, approvalPubKey); err != nil {
+		return err
+	}
+	return nil
+}
+
+func recoveryApprovalPubKey(action, encodedPubKey string) ([]byte, error) {
+	if action == mfatypes.RecoveryActionDisable {
+		if encodedPubKey != "" {
+			return nil, errorsmod.Wrap(mfatypes.ErrInvalidMFAPolicy, "disable recovery must not include an approval public key")
+		}
+		return nil, nil
+	}
+	pubKey, err := mfatypes.DecodeApprovalPubKey(encodedPubKey)
+	if err != nil {
+		return nil, errorsmod.Wrap(mfatypes.ErrInvalidMFAPolicy, "invalid recovery approval public key encoding")
+	}
+	if len(pubKey) != secp256k1.PubKeySize {
+		return nil, errorsmod.Wrapf(mfatypes.ErrInvalidMFAPolicy, "invalid recovery approval public key length: %d", len(pubKey))
+	}
+	return pubKey, nil
 }
 
 func (d MFARequirementDecorator) protectedAccounts(msgs []sdk.Msg) (map[string]sdk.AccAddress, error) {
@@ -455,6 +816,14 @@ func BuildApprovalPayload(ctx sdk.Context, tx sdk.Tx, cdc codec.Codec, account s
 	return newApprovalPayload(ctx, account.String(), expiresAt, getTimeoutHeight(tx), hash, signers), nil
 }
 
+func BuildGuardianApprovalPayload(ctx sdk.Context, tx sdk.Tx, cdc codec.Codec, account sdk.AccAddress, guardianAddress, action, approvalPubKey string, expiresAt int64, signers []mfatypes.SignerSequence) (mfatypes.GuardianApprovalPayload, error) {
+	hash, err := messagesHash(cdc, tx.GetMsgs())
+	if err != nil {
+		return mfatypes.GuardianApprovalPayload{}, err
+	}
+	return newGuardianApprovalPayload(ctx, account.String(), guardianAddress, action, approvalPubKey, expiresAt, getTimeoutHeight(tx), hash, signers), nil
+}
+
 func newApprovalPayload(ctx sdk.Context, account string, expiresAt int64, timeoutHeight uint64, messagesHash string, signers []mfatypes.SignerSequence) mfatypes.ApprovalPayload {
 	return mfatypes.ApprovalPayload{
 		Version:       mfatypes.ApprovalVersion,
@@ -464,6 +833,21 @@ func newApprovalPayload(ctx sdk.Context, account string, expiresAt int64, timeou
 		TimeoutHeight: timeoutHeight,
 		MessagesHash:  messagesHash,
 		Signers:       signers,
+	}
+}
+
+func newGuardianApprovalPayload(ctx sdk.Context, account, guardianAddress, action, approvalPubKey string, expiresAt int64, timeoutHeight uint64, messagesHash string, signers []mfatypes.SignerSequence) mfatypes.GuardianApprovalPayload {
+	return mfatypes.GuardianApprovalPayload{
+		Version:         mfatypes.GuardianApprovalVersion,
+		ChainID:         ctx.ChainID(),
+		Account:         account,
+		GuardianAddress: guardianAddress,
+		Action:          action,
+		ApprovalPubKey:  approvalPubKey,
+		ExpiresAt:       expiresAt,
+		TimeoutHeight:   timeoutHeight,
+		MessagesHash:    messagesHash,
+		Signers:         signers,
 	}
 }
 
