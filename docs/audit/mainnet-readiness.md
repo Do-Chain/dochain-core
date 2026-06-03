@@ -30,3 +30,9 @@ This document records the launch-hardening assumptions expected by the external 
 
 - Final audit build should be Linux with Go `1.24.7`, CGO enabled, and WasmVM build dependencies installed.
 - Windows without `gcc` cannot validate Wasmd-dependent packages because the no-CGO keeper path is not compatible with Wasmd helper code.
+
+## Known Open Items
+
+- A three-validator launch is not fault tolerant with equal validator power. One validator outage can halt the chain. Treat three validators plus one endpoint as staging or controlled beta unless this risk is explicitly accepted.
+- `GO-2026-4740` remains reachable through the WasmVM/msgpack dependency and currently has no fixed version. Keep public Wasm upload and default instantiate disabled until the upstream dependency can be fixed or removed.
+- MFA control actions are currently carried in transaction memo data. The chain enforces MFA for protected transfers and undelegations, but protobuf `MsgEnableMFA` / `MsgDisableMFA` messages should replace memo control actions before broad public launch.

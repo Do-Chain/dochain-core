@@ -131,12 +131,8 @@ build-linux:
 	docker rm temp
 
 build-linux-with-shared-library:
-	mkdir -p $(BUILDDIR)
-	docker build --platform linux/amd64 --no-cache --tag daviddochain/dochain-core-shared ./ -f ./shared.Dockerfile
-	docker create --platform linux/amd64 --name temp daviddochain/dochain-core-shared:latest
-	docker cp temp:/usr/local/bin/dochaind $(BUILDDIR)/
-	docker cp temp:/lib/libwasmvm.so $(BUILDDIR)/
-	docker rm temp
+	@echo "build-linux-with-shared-library is deprecated; using hardened static Dockerfile build instead"
+	$(MAKE) build-linux
 
 build-release: build-release-amd64 build-release-arm64
 

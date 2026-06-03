@@ -1183,7 +1183,7 @@ func TestRealOracleMultiMessageTxLogsReconstruction(t *testing.T) {
 
 	require.Equal(t, "dovaloper1j5pj3n3m9nxmv9dgl4wnv2yq53k2jf2283j5zm", voteAttrMap["voter"])
 	require.Contains(t, voteAttrMap["exchange_rates"], "uaud")
-	require.Contains(t, voteAttrMap["exchange_rates"], "udotest")
+	require.Contains(t, voteAttrMap["exchange_rates"], "uusd")
 
 	// Verify aggregate_prevote event in msg_index 1
 	var aggregatePrevoteEvent map[string]interface{}
@@ -1460,9 +1460,3 @@ func TestTxLogsMiddleware_SparseMsgIndex(t *testing.T) {
 		})
 	}
 }
-
-
-
-
-
-
