@@ -79,7 +79,7 @@ func NewAnteHandler(options HandlerOptions) (sdk.AnteHandler, error) {
 		ante.NewExtensionOptionsDecorator(options.ExtensionOptionChecker),
 		ante.NewValidateBasicDecorator(),
 		ante.NewTxTimeoutHeightDecorator(),
-		ante.NewValidateMemoDecorator(options.AccountKeeper),
+		NewMFAMemoAwareValidateMemoDecorator(options.AccountKeeper),
 		NewSpammingPreventionDecorator(options.OracleKeeper),
 		NewIBCTransferSpamPreventionDecorator(),
 		NewMinInitialDepositDecorator(options.GovKeeper, options.TreasuryKeeper),
