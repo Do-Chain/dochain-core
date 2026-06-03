@@ -20,6 +20,7 @@ tools/bin/*
 examples/build/*
 docs/_build
 tools-stamp
+github.com/
 
 # Data - ideally these don't exist
 examples/basecoin/app/data
