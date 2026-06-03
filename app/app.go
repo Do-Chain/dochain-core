@@ -291,6 +291,7 @@ func NewDoApp(
 			WasmConfig:         &wasmConfig,
 			TXCounterStore:     runtime.NewKVStoreService(app.GetKey(wasmtypes.StoreKey)),
 			DyncommKeeper:      app.DyncommKeeper,
+			MFAKeeper:          app.MFAKeeper,
 			StakingKeeper:      app.StakingKeeper,
 			Cdc:                app.appCodec,
 		},

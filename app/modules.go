@@ -12,7 +12,7 @@ import (
 	// unnamed import of statik for swagger UI support
 	_ "github.com/Daviddochain/dochain-core/v4/client/docs/statik"
 	customauth "github.com/Daviddochain/dochain-core/v4/custom/auth"
-		customauthz "github.com/Daviddochain/dochain-core/v4/custom/authz"
+	customauthz "github.com/Daviddochain/dochain-core/v4/custom/authz"
 	custombank "github.com/Daviddochain/dochain-core/v4/custom/bank"
 	customdistr "github.com/Daviddochain/dochain-core/v4/custom/distribution"
 	customevidence "github.com/Daviddochain/dochain-core/v4/custom/evidence"
@@ -28,6 +28,8 @@ import (
 	dyncommtypes "github.com/Daviddochain/dochain-core/v4/x/dyncomm/types"
 	"github.com/Daviddochain/dochain-core/v4/x/market"
 	markettypes "github.com/Daviddochain/dochain-core/v4/x/market/types"
+	"github.com/Daviddochain/dochain-core/v4/x/mfa"
+	mfatypes "github.com/Daviddochain/dochain-core/v4/x/mfa/types"
 	"github.com/Daviddochain/dochain-core/v4/x/oracle"
 	oracletypes "github.com/Daviddochain/dochain-core/v4/x/oracle/types"
 	"github.com/Daviddochain/dochain-core/v4/x/treasury"
@@ -101,6 +103,7 @@ var (
 		treasury.AppModuleBasic{},
 		customwasm.AppModuleBasic{},
 		dyncomm.AppModuleBasic{},
+		mfa.AppModuleBasic{},
 		ibchooks.AppModuleBasic{},
 		consensus.AppModuleBasic{},
 	)
@@ -156,6 +159,7 @@ func appModules(
 		treasury.NewAppModule(appCodec, app.TreasuryKeeper),
 		customwasm.NewAppModule(appCodec, &app.WasmKeeper, app.StakingKeeper, app.AccountKeeper, app.BankKeeper, app.MsgServiceRouter(), app.GetSubspace(wasmtypes.ModuleName), app.GetKey(wasmtypes.StoreKey)),
 		dyncomm.NewAppModule(appCodec, app.DyncommKeeper, app.StakingKeeper),
+		mfa.NewAppModule(app.MFAKeeper),
 		ibchooks.NewAppModule(app.AccountKeeper),
 		consensus.NewAppModule(appCodec, app.ConsensusParamsKeeper),
 	}
@@ -186,6 +190,7 @@ func simulationModules(
 		treasury.NewAppModule(appCodec, app.TreasuryKeeper),
 		customwasm.NewAppModule(appCodec, &app.WasmKeeper, app.StakingKeeper, app.AccountKeeper, app.BankKeeper, app.MsgServiceRouter(), app.GetSubspace(wasmtypes.ModuleName), app.GetKey(wasmtypes.StoreKey)),
 		dyncomm.NewAppModule(appCodec, app.DyncommKeeper, app.StakingKeeper),
+		mfa.NewAppModule(app.MFAKeeper),
 	}
 }
 
@@ -215,6 +220,7 @@ func orderBeginBlockers() []string {
 		markettypes.ModuleName,
 		wasmtypes.ModuleName,
 		dyncommtypes.ModuleName,
+		mfatypes.ModuleName,
 		// consensus module
 		consensusparamtypes.ModuleName,
 	}
@@ -247,58 +253,47 @@ func orderEndBlockers() []string {
 		markettypes.ModuleName,
 		wasmtypes.ModuleName,
 		dyncommtypes.ModuleName,
+		mfatypes.ModuleName,
 		// consensus module
 		consensusparamtypes.ModuleName,
 	}
 }
 
-
 func orderInitGenesis() []string {
-    return []string{
-        // Core SDK modules required before gentx execution
-        authtypes.ModuleName,
-        banktypes.ModuleName,
-        distrtypes.ModuleName,
-        stakingtypes.ModuleName,
-        genutiltypes.ModuleName,
+	return []string{
+		// Core SDK modules required before gentx execution
+		authtypes.ModuleName,
+		banktypes.ModuleName,
+		distrtypes.ModuleName,
+		stakingtypes.ModuleName,
+		genutiltypes.ModuleName,
 
-        // Remaining core SDK modules
-        slashingtypes.ModuleName,
-        govtypes.ModuleName,
-        minttypes.ModuleName,
-        crisistypes.ModuleName,
-        evidencetypes.ModuleName,
-        authz.ModuleName,
-        paramstypes.ModuleName,
-        upgradetypes.ModuleName,
-        feegrant.ModuleName,
+		// Remaining core SDK modules
+		slashingtypes.ModuleName,
+		govtypes.ModuleName,
+		minttypes.ModuleName,
+		crisistypes.ModuleName,
+		evidencetypes.ModuleName,
+		authz.ModuleName,
+		paramstypes.ModuleName,
+		upgradetypes.ModuleName,
+		feegrant.ModuleName,
 
-        // IBC related modules
-        ibcexported.ModuleName,
-        ibctransfertypes.ModuleName,
-        icatypes.ModuleName,
-        ibchookstypes.ModuleName,
+		// IBC related modules
+		ibcexported.ModuleName,
+		ibctransfertypes.ModuleName,
+		icatypes.ModuleName,
+		ibchookstypes.ModuleName,
 
-        // Do-Chain specific modules
-        markettypes.ModuleName,
-        oracletypes.ModuleName,
-        treasurytypes.ModuleName,
-        wasmtypes.ModuleName,
-        dyncommtypes.ModuleName,
+		// Do-Chain specific modules
+		markettypes.ModuleName,
+		oracletypes.ModuleName,
+		treasurytypes.ModuleName,
+		wasmtypes.ModuleName,
+		dyncommtypes.ModuleName,
+		mfatypes.ModuleName,
 
-        // Consensus
-        consensusparamtypes.ModuleName,
-    }
+		// Consensus
+		consensusparamtypes.ModuleName,
+	}
 }
-
-
-
-
-
-
-
-
-
-
-
-

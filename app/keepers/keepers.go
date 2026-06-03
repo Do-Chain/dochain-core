@@ -22,6 +22,8 @@ import (
 	dyncommtypes "github.com/Daviddochain/dochain-core/v4/x/dyncomm/types"
 	marketkeeper "github.com/Daviddochain/dochain-core/v4/x/market/keeper"
 	markettypes "github.com/Daviddochain/dochain-core/v4/x/market/types"
+	mfakeeper "github.com/Daviddochain/dochain-core/v4/x/mfa/keeper"
+	mfatypes "github.com/Daviddochain/dochain-core/v4/x/mfa/types"
 	oraclekeeper "github.com/Daviddochain/dochain-core/v4/x/oracle/keeper"
 	oracletypes "github.com/Daviddochain/dochain-core/v4/x/oracle/types"
 	treasurykeeper "github.com/Daviddochain/dochain-core/v4/x/treasury/keeper"
@@ -97,11 +99,12 @@ type AppKeepers struct {
 	TreasuryKeeper        treasurykeeper.Keeper
 	WasmKeeper            wasmkeeper.Keeper
 	DyncommKeeper         dyncommkeeper.Keeper
+	MFAKeeper             mfakeeper.Keeper
 	IBCHooksKeeper        *ibchookskeeper.Keeper
 	ConsensusParamsKeeper consensusparamkeeper.Keeper
-	Ics20WasmHooks  *ibchooks.WasmHooks
-	IBCHooksWrapper *ibchooks.ICS4Middleware
-	TransferStack   ibctransfer.IBCModule
+	Ics20WasmHooks        *ibchooks.WasmHooks
+	IBCHooksWrapper       *ibchooks.ICS4Middleware
+	TransferStack         ibctransfer.IBCModule
 }
 
 func NewAppKeepers(
@@ -140,6 +143,7 @@ func NewAppKeepers(
 		treasurytypes.StoreKey:       storetypes.NewKVStoreKey(treasurytypes.StoreKey),
 		wasmtypes.StoreKey:           storetypes.NewKVStoreKey(wasmtypes.StoreKey),
 		dyncommtypes.StoreKey:        storetypes.NewKVStoreKey(dyncommtypes.StoreKey),
+		mfatypes.StoreKey:            storetypes.NewKVStoreKey(mfatypes.StoreKey),
 	}
 	tkeys := map[string]*storetypes.TransientStoreKey{
 		paramstypes.TStoreKey: storetypes.NewTransientStoreKey(paramstypes.TStoreKey),
@@ -326,6 +330,10 @@ func NewAppKeepers(
 		appKeepers.StakingKeeper, appKeepers.DistrKeeper,
 		&appKeepers.WasmKeeper, distrtypes.ModuleName,
 	)
+	appKeepers.MFAKeeper = mfakeeper.NewKeeper(
+		appCodec,
+		appKeepers.keys[mfatypes.StoreKey],
+	)
 	hooksKeeper := ibchookskeeper.NewKeeper(
 		appKeepers.keys[ibchookstypes.StoreKey],
 	)
@@ -365,36 +373,36 @@ func NewAppKeepers(
 		panic(err)
 	}
 	wasmVMConfig := wasmtypes.VMConfig{}
-        wasmMsgHandler := customwasmkeeper.NewMessageHandler(
-                bApp.MsgServiceRouter(),
-                appKeepers.IBCHooksWrapper,
-                appKeepers.IBCKeeper.ChannelKeeper,
-                appKeepers.BankKeeper,
-                nil,
-                appKeepers.TreasuryKeeper,
-                appKeepers.AccountKeeper,
-                nil,
-                appCodec,
-                appKeepers.TransferKeeper,
-        )
-        // the first slice will replace all default msh handler with custom one
-        wasmOpts = append([]wasmkeeper.Option{wasmkeeper.WithMessageHandler(wasmMsgHandler)}, wasmOpts...)
-        // the second slice will add custom querier and message handler decorator
-        wasmOpts = append(
-                wasmOpts,
-                dochainwasm.RegisterCustomPlugins(
-                        &appKeepers.MarketKeeper,
-                        &appKeepers.OracleKeeper,
-                        &appKeepers.TreasuryKeeper,
-                )...,
-        )
-        wasmOpts = append(
-                wasmOpts,
-                dochainwasm.RegisterStargateQueries(
-                        *bApp.GRPCQueryRouter(),
-                        appCodec,
-                )...,
-        )
+	wasmMsgHandler := customwasmkeeper.NewMessageHandler(
+		bApp.MsgServiceRouter(),
+		appKeepers.IBCHooksWrapper,
+		appKeepers.IBCKeeper.ChannelKeeper,
+		appKeepers.BankKeeper,
+		nil,
+		appKeepers.TreasuryKeeper,
+		appKeepers.AccountKeeper,
+		nil,
+		appCodec,
+		appKeepers.TransferKeeper,
+	)
+	// the first slice will replace all default msh handler with custom one
+	wasmOpts = append([]wasmkeeper.Option{wasmkeeper.WithMessageHandler(wasmMsgHandler)}, wasmOpts...)
+	// the second slice will add custom querier and message handler decorator
+	wasmOpts = append(
+		wasmOpts,
+		dochainwasm.RegisterCustomPlugins(
+			&appKeepers.MarketKeeper,
+			&appKeepers.OracleKeeper,
+			&appKeepers.TreasuryKeeper,
+		)...,
+	)
+	wasmOpts = append(
+		wasmOpts,
+		dochainwasm.RegisterStargateQueries(
+			*bApp.GRPCQueryRouter(),
+			appCodec,
+		)...,
+	)
 	// this order must be uphold else error will be thrown
 	wasmOpts = append(
 		wasmOpts,
@@ -430,7 +438,7 @@ func NewAppKeepers(
 		wasmDir,                                                  // homeDir
 		wasmNodeConfig,                                           // NodeConfig
 		wasmVMConfig,                                             // VMConfig
-		append(wasmkeeper.BuiltInCapabilities(), "do"),        // availableCapabilities
+		append(wasmkeeper.BuiltInCapabilities(), "do"),           // availableCapabilities
 		authtypes.NewModuleAddress(govtypes.ModuleName).String(), // authority
 		wasmOpts..., // Options
 	)
@@ -547,15 +555,3 @@ func (appKeepers *AppKeepers) BlacklistedAccAddrs(
 
 	return blacklistedAddrs
 }
-
-
-
-
-
-
-
-
-
-
-
-
