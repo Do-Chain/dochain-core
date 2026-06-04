@@ -5,9 +5,9 @@ toolchain go1.24.7
 module github.com/Daviddochain/dochain-core/v4
 
 require (
-	cosmossdk.io/api v0.9.2
+	cosmossdk.io/api v1.0.0
 	cosmossdk.io/client/v2 v2.0.0-beta.8
-	cosmossdk.io/core v0.11.3
+	cosmossdk.io/core v1.1.0
 	cosmossdk.io/errors v1.1.0
 	cosmossdk.io/log v1.6.1
 	cosmossdk.io/math v1.5.3
@@ -36,7 +36,7 @@ require (
 	github.com/spf13/cobra v1.10.2
 	github.com/spf13/pflag v1.0.10
 	github.com/stretchr/testify v1.11.1
-	google.golang.org/genproto/googleapis/api v0.0.0-20251222181119-0a764e51fe1b
+	google.golang.org/genproto/googleapis/api v0.0.0-20260114163908-3f89685c29c3
 	google.golang.org/grpc v1.79.3
 	gopkg.in/yaml.v2 v2.4.0
 )
@@ -236,13 +236,13 @@ require (
 	github.com/ulikunitz/xz v0.5.14 // indirect
 	github.com/zondax/hid v0.9.2 // indirect
 	go.etcd.io/bbolt v1.4.0 // indirect
-	golang.org/x/crypto v0.46.0 // indirect
-	golang.org/x/exp v0.0.0-20250506013437-ce4c2cf36ca6 // indirect
-	golang.org/x/net v0.48.0 // indirect
+	golang.org/x/crypto v0.48.0 // indirect
+	golang.org/x/exp v0.0.0-20260112195511-716be5621a96 // indirect
+	golang.org/x/net v0.50.0 // indirect
 	golang.org/x/oauth2 v0.34.0 // indirect
 	golang.org/x/sync v0.19.0 // indirect
 	golang.org/x/sys v0.41.0 // indirect
-	golang.org/x/term v0.38.0 // indirect
+	golang.org/x/term v0.40.0 // indirect
 	golang.org/x/text v0.34.0 // indirect
 	google.golang.org/api v0.247.0 // indirect
 	google.golang.org/genproto v0.0.0-20250603155806-513f23925822 // indirect
