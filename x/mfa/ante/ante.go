@@ -37,12 +37,20 @@ type MFARequirementDecorator struct {
 	mfaKeeper     MFAKeeper
 }
 
+type MFAControlApplyDecorator struct {
+	mfaKeeper MFAKeeper
+}
+
 func NewMFARequirementDecorator(cdc codec.Codec, accountKeeper authante.AccountKeeper, mfaKeeper MFAKeeper) MFARequirementDecorator {
 	return MFARequirementDecorator{
 		cdc:           cdc,
 		accountKeeper: accountKeeper,
 		mfaKeeper:     mfaKeeper,
 	}
+}
+
+func NewMFAControlApplyDecorator(mfaKeeper MFAKeeper) MFAControlApplyDecorator {
+	return MFAControlApplyDecorator{mfaKeeper: mfaKeeper}
 }
 
 func (d MFARequirementDecorator) AnteHandle(ctx sdk.Context, tx sdk.Tx, simulate bool, next sdk.AnteHandler) (sdk.Context, error) {
@@ -92,9 +100,31 @@ func (d MFARequirementDecorator) AnteHandle(ctx sdk.Context, tx sdk.Tx, simulate
 		if err := d.verifyInitialEnableApproval(ctx, tx, mfaMemo); err != nil {
 			return ctx, err
 		}
-		if err := d.applyControlActions(ctx, tx, mfaMemo); err != nil {
-			return ctx, err
+	}
+
+	return next(ctx, tx, simulate)
+}
+
+func (d MFAControlApplyDecorator) AnteHandle(ctx sdk.Context, tx sdk.Tx, simulate bool, next sdk.AnteHandler) (sdk.Context, error) {
+	if d.mfaKeeper == nil {
+		return next(ctx, tx, simulate)
+	}
+
+	mfaMemo, memoErr := parseMFAMemo(tx)
+	if memoErr != nil {
+		if containsMFAKey(getMemo(tx)) {
+			return ctx, errorsmod.Wrap(mfatypes.ErrInvalidMFAApproval, memoErr.Error())
 		}
+		return next(ctx, tx, simulate)
+	}
+	if mfaMemo == nil {
+		return next(ctx, tx, simulate)
+	}
+	if err := validateControlActionCount(mfaMemo); err != nil {
+		return ctx, err
+	}
+	if err := d.applyControlActions(ctx, tx, mfaMemo); err != nil {
+		return ctx, err
 	}
 
 	return next(ctx, tx, simulate)
@@ -348,7 +378,7 @@ func (d MFARequirementDecorator) approvalPayload(ctx sdk.Context, tx sdk.Tx, acc
 	return newApprovalPayload(ctx, account, expiresAt, getTimeoutHeight(tx), msgsHash, signers), nil
 }
 
-func (d MFARequirementDecorator) applyControlActions(ctx sdk.Context, tx sdk.Tx, mfaMemo *mfatypes.MemoMFA) error {
+func (d MFAControlApplyDecorator) applyControlActions(ctx sdk.Context, tx sdk.Tx, mfaMemo *mfatypes.MemoMFA) error {
 	if mfaMemo.Enable != nil {
 		account, err := sdk.AccAddressFromBech32(mfaMemo.Enable.Account)
 		if err != nil {

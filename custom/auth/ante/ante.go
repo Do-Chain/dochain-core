@@ -91,6 +91,7 @@ func NewAnteHandler(options HandlerOptions) (sdk.AnteHandler, error) {
 		ante.NewValidateSigCountDecorator(options.AccountKeeper),
 		ante.NewSigGasConsumeDecorator(options.AccountKeeper, options.SigGasConsumer),
 		ante.NewSigVerificationDecorator(options.AccountKeeper, options.SignModeHandler),
+		mfaante.NewMFAControlApplyDecorator(options.MFAKeeper),
 		ante.NewIncrementSequenceDecorator(options.AccountKeeper),
 		ibcante.NewRedundantRelayDecorator(&options.IBCKeeper),
 	), nil

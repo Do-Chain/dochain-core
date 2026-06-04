@@ -3,6 +3,7 @@ package ante_test
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"testing"
 	"time"
 
@@ -32,11 +33,11 @@ import (
 )
 
 type fixture struct {
-	ctx       sdk.Context
-	cdc       codec.Codec
-	keeper    mfakeeper.Keeper
-	accounts  *mockAccountKeeper
-	decorator mfaante.MFARequirementDecorator
+	ctx      sdk.Context
+	cdc      codec.Codec
+	keeper   mfakeeper.Keeper
+	accounts *mockAccountKeeper
+	handler  sdk.AnteHandler
 }
 
 func newFixture(t *testing.T) fixture {
@@ -63,11 +64,14 @@ func newFixture(t *testing.T) fixture {
 	accounts := newMockAccountKeeper()
 
 	return fixture{
-		ctx:       ctx,
-		cdc:       cdc,
-		keeper:    keeper,
-		accounts:  accounts,
-		decorator: mfaante.NewMFARequirementDecorator(cdc, accounts, keeper),
+		ctx:      ctx,
+		cdc:      cdc,
+		keeper:   keeper,
+		accounts: accounts,
+		handler: sdk.ChainAnteDecorators(
+			mfaante.NewMFARequirementDecorator(cdc, accounts, keeper),
+			mfaante.NewMFAControlApplyDecorator(keeper),
+		),
 	}
 }
 
@@ -78,7 +82,7 @@ func TestProtectedSendRequiresMFA(t *testing.T) {
 
 	tx := newTestTx([]sdk.Msg{banktypes.NewMsgSend(account, sdk.AccAddress("recipient____________"), sdk.NewCoins(sdk.NewInt64Coin(core.MicroDoDenom, 1)))}, "", []sdk.AccAddress{account})
 
-	_, err := fx.decorator.AnteHandle(fx.ctx, tx, false, passthrough)
+	_, err := fx.handler(fx.ctx, tx, false)
 	require.ErrorIs(t, err, mfatypes.ErrMFARequired)
 }
 
@@ -90,7 +94,7 @@ func TestProtectedSendAllowsValidMFA(t *testing.T) {
 	tx := newTestTx([]sdk.Msg{banktypes.NewMsgSend(account, sdk.AccAddress("recipient____________"), sdk.NewCoins(sdk.NewInt64Coin(core.MicroDoDenom, 1)))}, "", []sdk.AccAddress{account})
 	tx.memo = signApprovalMemo(t, fx.ctx, fx.cdc, tx, account, mfaPriv, 1_700_000_300, 7)
 
-	_, err := fx.decorator.AnteHandle(fx.ctx, tx, false, passthrough)
+	_, err := fx.handler(fx.ctx, tx, false)
 	require.NoError(t, err)
 }
 
@@ -103,7 +107,7 @@ func TestProtectedSendRejectsApprovalForDifferentMessage(t *testing.T) {
 	memo := signApprovalMemo(t, fx.ctx, fx.cdc, signedTx, account, mfaPriv, 1_700_000_300, 7)
 
 	changedTx := newTestTx([]sdk.Msg{banktypes.NewMsgSend(account, sdk.AccAddress("recipient____________"), sdk.NewCoins(sdk.NewInt64Coin(core.MicroDoDenom, 2)))}, memo, []sdk.AccAddress{account})
-	_, err := fx.decorator.AnteHandle(fx.ctx, changedTx, false, passthrough)
+	_, err := fx.handler(fx.ctx, changedTx, false)
 	require.ErrorIs(t, err, mfatypes.ErrInvalidMFAApproval)
 }
 
@@ -119,7 +123,7 @@ func TestEnableAndDisableControlMemo(t *testing.T) {
 			ApprovalPubKey: mfatypes.EncodeApprovalPubKey(mfaPriv.PubKey().Bytes()),
 		},
 	})
-	_, err := fx.decorator.AnteHandle(fx.ctx, enableTx, false, passthrough)
+	_, err := fx.handler(fx.ctx, enableTx, false)
 	require.NoError(t, err)
 	require.True(t, fx.keeper.HasPolicy(fx.ctx, account))
 
@@ -128,7 +132,7 @@ func TestEnableAndDisableControlMemo(t *testing.T) {
 		Approvals: []mfatypes.MemoApproval{approval(t, fx.ctx, fx.cdc, disableTx, account, mfaPriv, 1_700_000_300, 3)},
 		Disable:   &mfatypes.MemoDisable{Account: account.String()},
 	})
-	_, err = fx.decorator.AnteHandle(fx.ctx, disableTx, false, passthrough)
+	_, err = fx.handler(fx.ctx, disableTx, false)
 	require.NoError(t, err)
 	require.False(t, fx.keeper.HasPolicy(fx.ctx, account))
 }
@@ -145,7 +149,7 @@ func TestEnableRequiresInitialMFAApproval(t *testing.T) {
 		},
 	})
 
-	_, err := fx.decorator.AnteHandle(fx.ctx, enableTx, false, passthrough)
+	_, err := fx.handler(fx.ctx, enableTx, false)
 	require.ErrorIs(t, err, mfatypes.ErrMFARequired)
 	require.False(t, fx.keeper.HasPolicy(fx.ctx, account))
 }
@@ -165,7 +169,7 @@ func TestSetGuardianRequiresMFAApproval(t *testing.T) {
 		},
 	})
 
-	_, err := fx.decorator.AnteHandle(fx.ctx, tx, false, passthrough)
+	_, err := fx.handler(fx.ctx, tx, false)
 	require.NoError(t, err)
 	policy, found := fx.keeper.GetPolicy(fx.ctx, account)
 	require.True(t, found)
@@ -186,7 +190,7 @@ func TestGuardianApprovalCanDisableMFA(t *testing.T) {
 		GuardianApproval: guardianApproval(t, fx.ctx, fx.cdc, tx, account, guardian, guardianPriv, mfatypes.RecoveryActionDisable, "", 1_700_000_300, 4),
 	})
 
-	_, err := fx.decorator.AnteHandle(fx.ctx, tx, false, passthrough)
+	_, err := fx.handler(fx.ctx, tx, false)
 	require.NoError(t, err)
 	require.False(t, fx.keeper.HasPolicy(fx.ctx, account))
 }
@@ -205,7 +209,7 @@ func TestDelayedRecoveryStartAndExecuteRotatesMFA(t *testing.T) {
 			ApprovalPubKey: mfatypes.EncodeApprovalPubKey(newMfaPriv.PubKey().Bytes()),
 		},
 	})
-	_, err := fx.decorator.AnteHandle(fx.ctx, startTx, false, passthrough)
+	_, err := fx.handler(fx.ctx, startTx, false)
 	require.NoError(t, err)
 	policy, found := fx.keeper.GetPolicy(fx.ctx, account)
 	require.True(t, found)
@@ -215,11 +219,11 @@ func TestDelayedRecoveryStartAndExecuteRotatesMFA(t *testing.T) {
 	executeTx.memo = controlMemo(t, &mfatypes.MemoMFA{
 		RecoveryExecute: &mfatypes.MemoRecoveryExecute{Account: account.String()},
 	})
-	_, err = fx.decorator.AnteHandle(fx.ctx, executeTx, false, passthrough)
+	_, err = fx.handler(fx.ctx, executeTx, false)
 	require.ErrorIs(t, err, mfatypes.ErrMFARequired)
 
 	fx.ctx = fx.ctx.WithBlockTime(fx.ctx.BlockTime().Add(time.Duration(mfatypes.RecoveryDelaySeconds) * time.Second))
-	_, err = fx.decorator.AnteHandle(fx.ctx, executeTx, false, passthrough)
+	_, err = fx.handler(fx.ctx, executeTx, false)
 	require.NoError(t, err)
 	policy, found = fx.keeper.GetPolicy(fx.ctx, account)
 	require.True(t, found)
@@ -241,8 +245,31 @@ func TestDelayedRecoveryCannotBypassOutgoingSend(t *testing.T) {
 		},
 	})
 
-	_, err := fx.decorator.AnteHandle(fx.ctx, tx, false, passthrough)
+	_, err := fx.handler(fx.ctx, tx, false)
 	require.ErrorIs(t, err, mfatypes.ErrInvalidMFAApproval)
+}
+
+func TestControlActionDoesNotApplyWhenLaterAnteFails(t *testing.T) {
+	fx := newFixture(t)
+	account, _, mfaPriv := fx.addAccount(t, 3)
+
+	blockingHandler := sdk.ChainAnteDecorators(
+		mfaante.NewMFARequirementDecorator(fx.cdc, fx.accounts, fx.keeper),
+		blockingDecorator{},
+		mfaante.NewMFAControlApplyDecorator(fx.keeper),
+	)
+	enableTx := newTestTx(nil, "", []sdk.AccAddress{account})
+	enableTx.memo = controlMemo(t, &mfatypes.MemoMFA{
+		Approvals: []mfatypes.MemoApproval{approval(t, fx.ctx, fx.cdc, enableTx, account, mfaPriv, 1_700_000_300, 3)},
+		Enable: &mfatypes.MemoEnable{
+			Account:        account.String(),
+			ApprovalPubKey: mfatypes.EncodeApprovalPubKey(mfaPriv.PubKey().Bytes()),
+		},
+	})
+
+	_, err := blockingHandler(fx.ctx, enableTx, false)
+	require.ErrorContains(t, err, "signature verification failed")
+	require.False(t, fx.keeper.HasPolicy(fx.ctx, account))
 }
 
 func (f fixture) addAccount(t *testing.T, sequence uint64) (sdk.AccAddress, *secp256k1.PrivKey, *secp256k1.PrivKey) {
@@ -312,6 +339,12 @@ func controlMemo(t *testing.T, mfa *mfatypes.MemoMFA) string {
 
 func passthrough(ctx sdk.Context, tx sdk.Tx, simulate bool) (sdk.Context, error) {
 	return ctx, nil
+}
+
+type blockingDecorator struct{}
+
+func (blockingDecorator) AnteHandle(ctx sdk.Context, _ sdk.Tx, _ bool, _ sdk.AnteHandler) (sdk.Context, error) {
+	return ctx, errors.New("signature verification failed")
 }
 
 type testTx struct {
