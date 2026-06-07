@@ -2,7 +2,9 @@ package gov
 
 import (
 	"encoding/json"
+	"time"
 
+	sdkmath "cosmossdk.io/math"
 	customtypes "github.com/Daviddochain/dochain-core/v4/custom/gov/types"
 	core "github.com/Daviddochain/dochain-core/v4/types"
 	"github.com/cosmos/cosmos-sdk/codec"
@@ -35,16 +37,23 @@ func (AppModuleBasic) RegisterLegacyAminoCodec(cdc *codec.LegacyAmino) {
 func (am AppModuleBasic) DefaultGenesis(cdc codec.JSONCodec) json.RawMessage {
 	// customize to set default genesis state deposit denom to udo
 	defaultGenesisState := v1.DefaultGenesisState()
+	validatorStage := 48 * time.Hour
+	publicStage := 5 * 24 * time.Hour
+
 	defaultGenesisState.Params.MinDeposit[0].Denom = core.MicroDoDenom
-        if len(defaultGenesisState.Params.ExpeditedMinDeposit) > 0 {
-                defaultGenesisState.Params.ExpeditedMinDeposit[0].Denom = core.MicroDoDenom
-        }
+	defaultGenesisState.Params.MaxDepositPeriod = &validatorStage
+	defaultGenesisState.Params.VotingPeriod = &publicStage
+	defaultGenesisState.Params.ExpeditedVotingPeriod = &publicStage
+	defaultGenesisState.Params.Quorum = sdkmath.LegacyZeroDec().String()
+	defaultGenesisState.Params.Threshold = sdkmath.LegacyNewDecWithPrec(5, 1).String()
+	defaultGenesisState.Params.ExpeditedThreshold = defaultGenesisState.Params.Threshold
+	defaultGenesisState.Params.VetoThreshold = sdkmath.LegacyOneDec().String()
+	defaultGenesisState.Params.BurnVoteQuorum = false
+	defaultGenesisState.Params.BurnVoteVeto = false
+	defaultGenesisState.Params.BurnProposalDepositPrevote = false
+	if len(defaultGenesisState.Params.ExpeditedMinDeposit) > 0 {
+		defaultGenesisState.Params.ExpeditedMinDeposit[0].Denom = core.MicroDoDenom
+	}
 
 	return cdc.MustMarshalJSON(defaultGenesisState)
 }
-
-
-
-
-
-

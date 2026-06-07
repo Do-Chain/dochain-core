@@ -16,8 +16,8 @@ require (
 	cosmossdk.io/x/feegrant v0.2.0
 	cosmossdk.io/x/tx v1.1.0
 	cosmossdk.io/x/upgrade v0.2.0
-	github.com/CosmWasm/wasmd v0.61.13
-	github.com/CosmWasm/wasmvm/v3 v3.0.6
+	github.com/CosmWasm/wasmd v0.61.11
+	github.com/CosmWasm/wasmvm/v3 v3.0.4
 	github.com/cometbft/cometbft v0.38.21
 	github.com/cosmos/cosmos-db v1.1.3
 	github.com/cosmos/cosmos-sdk v0.53.6
@@ -262,7 +262,7 @@ replace (
 
 replace (
 	github.com/ChainSafe/go-schnorrkel => github.com/ChainSafe/go-schnorrkel v1.0.0
-	github.com/cosmos/cosmos-sdk => github.com/Do-Chain/dochain-cosmos-sdk v0.0.0-20260604074416-d2731557d834
+	github.com/cosmos/cosmos-sdk => github.com/Do-Chain/dochain-cosmos-sdk v0.0.0-20260607090007-c7648b3452ec
 	// replace goleveldb to optimized one
 	github.com/syndtr/goleveldb => github.com/Daviddochain/goleveldb v0.0.0-20230914223247-2b28f6655121
 	go.etcd.io/bbolt => go.etcd.io/bbolt v1.3.7
