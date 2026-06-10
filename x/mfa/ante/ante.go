@@ -83,6 +83,9 @@ func (d MFARequirementDecorator) AnteHandle(ctx sdk.Context, tx sdk.Tx, simulate
 
 	requiredAccounts := d.accountsWithPolicy(ctx, protectedAccounts)
 	if len(requiredAccounts) > 0 {
+		if err := d.validateRequiredPolicies(ctx, requiredAccounts); err != nil {
+			return ctx, err
+		}
 		if memoErr != nil {
 			return ctx, errorsmod.Wrap(mfatypes.ErrInvalidMFAApproval, memoErr.Error())
 		}
@@ -210,6 +213,19 @@ func (d MFARequirementDecorator) accountsWithPolicy(ctx sdk.Context, accounts ma
 	return required
 }
 
+func (d MFARequirementDecorator) validateRequiredPolicies(ctx sdk.Context, required map[string]sdk.AccAddress) error {
+	for account, addr := range required {
+		policy, found := d.mfaKeeper.GetPolicy(ctx, addr)
+		if !found {
+			continue
+		}
+		if err := policy.ValidateBasic(); err != nil {
+			return errorsmod.Wrapf(mfatypes.ErrInvalidMFAPolicy, "invalid mfa policy for %s: %s", account, err)
+		}
+	}
+	return nil
+}
+
 func (d MFARequirementDecorator) verifyInitialEnableApproval(ctx sdk.Context, tx sdk.Tx, mfaMemo *mfatypes.MemoMFA) error {
 	if mfaMemo.Enable == nil {
 		return nil
@@ -276,6 +292,9 @@ func (d MFARequirementDecorator) verifyApprovals(ctx sdk.Context, tx sdk.Tx, req
 		policy, found := d.mfaKeeper.GetPolicy(ctx, addr)
 		if !found {
 			continue
+		}
+		if err := policy.ValidateBasic(); err != nil {
+			return errorsmod.Wrapf(mfatypes.ErrInvalidMFAPolicy, "invalid mfa policy for %s: %s", account, err)
 		}
 		approval, found := approvalByAccount[account]
 		if found {

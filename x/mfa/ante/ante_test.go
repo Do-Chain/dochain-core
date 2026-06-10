@@ -86,6 +86,20 @@ func TestProtectedSendRequiresMFA(t *testing.T) {
 	require.ErrorIs(t, err, mfatypes.ErrMFARequired)
 }
 
+func TestCorruptPolicyFailsClosed(t *testing.T) {
+	fx := newFixture(t)
+	account, _, _ := fx.addAccount(t, 7)
+	fx.ctx.KVStore(fx.keeper.StoreKey()).Set(mfatypes.PolicyKey(account.String()), []byte("{not-json"))
+
+	_, found := fx.keeper.GetPolicy(fx.ctx, account)
+	require.True(t, found)
+
+	tx := newTestTx([]sdk.Msg{banktypes.NewMsgSend(account, sdk.AccAddress("recipient____________"), sdk.NewCoins(sdk.NewInt64Coin(core.MicroDoDenom, 1)))}, "", []sdk.AccAddress{account})
+
+	_, err := fx.handler(fx.ctx, tx, false)
+	require.ErrorIs(t, err, mfatypes.ErrInvalidMFAPolicy)
+}
+
 func TestProtectedSendAllowsValidMFA(t *testing.T) {
 	fx := newFixture(t)
 	account, _, mfaPriv := fx.addAccount(t, 7)
@@ -195,6 +209,44 @@ func TestGuardianApprovalCanDisableMFA(t *testing.T) {
 	require.False(t, fx.keeper.HasPolicy(fx.ctx, account))
 }
 
+func TestGuardianApprovalCannotApproveProtectedSend(t *testing.T) {
+	fx := newFixture(t)
+	account, _, mfaPriv := fx.addAccount(t, 4)
+	guardian, guardianPriv, _ := fx.addAccount(t, 1)
+	policy := mfatypes.NewPolicy(account, mfaPriv.PubKey().Bytes())
+	policy.GuardianAddress = guardian.String()
+	require.NoError(t, fx.keeper.SetPolicy(fx.ctx, policy))
+
+	tx := newTestTx([]sdk.Msg{
+		banktypes.NewMsgSend(account, sdk.AccAddress("recipient____________"), sdk.NewCoins(sdk.NewInt64Coin(core.MicroDoDenom, 1))),
+	}, "", []sdk.AccAddress{account})
+	tx.memo = controlMemo(t, &mfatypes.MemoMFA{
+		GuardianApproval: guardianApproval(t, fx.ctx, fx.cdc, tx, account, guardian, guardianPriv, mfatypes.RecoveryActionDisable, "", 1_700_000_300, 4),
+	})
+
+	_, err := fx.handler(fx.ctx, tx, false)
+	require.ErrorIs(t, err, mfatypes.ErrInvalidMFAApproval)
+}
+
+func TestRejectsMultipleMFAControlActions(t *testing.T) {
+	fx := newFixture(t)
+	account, _, mfaPriv := fx.addAccount(t, 4)
+	require.NoError(t, fx.keeper.SetPolicy(fx.ctx, mfatypes.NewPolicy(account, mfaPriv.PubKey().Bytes())))
+
+	tx := newTestTx(nil, "", []sdk.AccAddress{account})
+	tx.memo = controlMemo(t, &mfatypes.MemoMFA{
+		Approvals: []mfatypes.MemoApproval{approval(t, fx.ctx, fx.cdc, tx, account, mfaPriv, 1_700_000_300, 4)},
+		Disable:   &mfatypes.MemoDisable{Account: account.String()},
+		SetGuardian: &mfatypes.MemoSetGuardian{
+			Account: account.String(),
+		},
+	})
+
+	_, err := fx.handler(fx.ctx, tx, false)
+	require.ErrorIs(t, err, mfatypes.ErrInvalidMFAApproval)
+	require.True(t, fx.keeper.HasPolicy(fx.ctx, account))
+}
+
 func TestDelayedRecoveryStartAndExecuteRotatesMFA(t *testing.T) {
 	fx := newFixture(t)
 	account, _, mfaPriv := fx.addAccount(t, 4)
@@ -247,6 +299,63 @@ func TestDelayedRecoveryCannotBypassOutgoingSend(t *testing.T) {
 
 	_, err := fx.handler(fx.ctx, tx, false)
 	require.ErrorIs(t, err, mfatypes.ErrInvalidMFAApproval)
+}
+
+func TestDelayedRecoveryRequiresExactSelfSendCarrier(t *testing.T) {
+	tests := []struct {
+		name string
+		msgs []sdk.Msg
+	}{
+		{
+			name: "non self send",
+			msgs: []sdk.Msg{
+				banktypes.NewMsgSend(sdk.AccAddress("sender_______________"), sdk.AccAddress("recipient____________"), sdk.NewCoins(sdk.NewInt64Coin(core.MicroDoDenom, 1))),
+			},
+		},
+		{
+			name: "wrong amount",
+			msgs: []sdk.Msg{
+				banktypes.NewMsgSend(sdk.AccAddress("sender_______________"), sdk.AccAddress("sender_______________"), sdk.NewCoins(sdk.NewInt64Coin(core.MicroDoDenom, 2))),
+			},
+		},
+		{
+			name: "extra message",
+			msgs: []sdk.Msg{
+				banktypes.NewMsgSend(sdk.AccAddress("sender_______________"), sdk.AccAddress("sender_______________"), sdk.NewCoins(sdk.NewInt64Coin(core.MicroDoDenom, 1))),
+				banktypes.NewMsgSend(sdk.AccAddress("sender_______________"), sdk.AccAddress("recipient____________"), sdk.NewCoins(sdk.NewInt64Coin(core.MicroDoDenom, 1))),
+			},
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			fx := newFixture(t)
+			account, _, mfaPriv := fx.addAccount(t, 4)
+			require.NoError(t, fx.keeper.SetPolicy(fx.ctx, mfatypes.NewPolicy(account, mfaPriv.PubKey().Bytes())))
+
+			msgs := make([]sdk.Msg, len(tc.msgs))
+			for index, msg := range tc.msgs {
+				if send, ok := msg.(*banktypes.MsgSend); ok {
+					send.FromAddress = account.String()
+					if tc.name != "non self send" {
+						send.ToAddress = account.String()
+					}
+				}
+				msgs[index] = msg
+			}
+
+			tx := newTestTx(msgs, "", []sdk.AccAddress{account})
+			tx.memo = controlMemo(t, &mfatypes.MemoMFA{
+				RecoveryStart: &mfatypes.MemoRecoveryStart{
+					Account: account.String(),
+					Action:  mfatypes.RecoveryActionDisable,
+				},
+			})
+
+			_, err := fx.handler(fx.ctx, tx, false)
+			require.ErrorIs(t, err, mfatypes.ErrInvalidMFAApproval)
+		})
+	}
 }
 
 func TestControlActionDoesNotApplyWhenLaterAnteFails(t *testing.T) {

@@ -28,7 +28,8 @@ func (k Keeper) GetPolicy(ctx sdk.Context, account sdk.AccAddress) (types.Policy
 	}
 	var policy types.Policy
 	if err := json.Unmarshal(bz, &policy); err != nil {
-		return types.Policy{}, false
+		k.Logger(ctx).Error("invalid mfa policy state", "account", account.String(), "error", err)
+		return types.Policy{Account: account.String(), Enabled: true}, true
 	}
 	return policy, policy.Enabled
 }
