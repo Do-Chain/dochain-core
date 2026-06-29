@@ -1,13 +1,12 @@
 # v15_1 No-Vote Upgrade Runbook
 
 This upgrade is a coordinated hard fork. The custom governance tally and oracle
-jail-only behavior are gated by `DoCommunityGovernanceHeight`; leave that value
-at `0` until the activation height and CosmWasm upload policy are confirmed.
+jail-only behavior activate at `DoCommunityGovernanceHeight`.
 
 ## Decisions To Confirm
 
-- `types/fork.DoCommunityGovernanceHeight`: set from `0` to the agreed future block height.
-- `app/upgrades/v15_1.cosmWasmUploadAllowlist`: leave empty for `Everybody`, or fill with exact `do...` addresses for `AnyOfAddresses`.
+- `types/fork.DoCommunityGovernanceHeight`: `1_540_500`.
+- `app/upgrades/v15_1.cosmWasmUploadAllowlist`: empty, so upload access becomes `Everybody`.
 - Restitution source: use an archive LCD or restored node that can serve heights `503999` and `508033`.
 
 ## What Activates At The Fork Height
