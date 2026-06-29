@@ -1,7 +1,8 @@
 # v15_1 No-Vote Upgrade Runbook
 
-This upgrade is a coordinated hard fork. Do not restart validators with the new
-binary until the activation height and CosmWasm upload policy are confirmed.
+This upgrade is a coordinated hard fork. The custom governance tally and oracle
+jail-only behavior are gated by `DoCommunityGovernanceHeight`; leave that value
+at `0` until the activation height and CosmWasm upload policy are confirmed.
 
 ## Decisions To Confirm
 
@@ -15,7 +16,7 @@ binary until the activation height and CosmWasm upload policy are confirmed.
 - Community voting power is capped at 2.5% per wallet.
 - Bonded validator operators cannot vote in Community voting; they only count once in phase-one validator backing.
 - CosmWasm upload and default instantiate access are updated by the selected upload policy.
-- Oracle and standard slashing fractions are set to zero so jail events no longer burn delegator stake.
+- Oracle and standard slashing fractions are set to zero so post-fork jail events no longer burn delegator stake.
 
 ## Build
 
@@ -52,7 +53,7 @@ redelegation after the pre-jail height.
 ## Validator Rollout
 
 1. Back up each node home, including `config`, `data/priv_validator_state.json`, and service files.
-2. Install the new `dochaind` binary on all validators and sentry/RPC nodes without starting it early.
+2. Install the new `dochaind` binary on all validators and sentry/RPC nodes. Staging is safe only while `DoCommunityGovernanceHeight` remains `0`; once set, coordinate restarts tightly.
 3. Stop all nodes at the agreed halt window before `DoCommunityGovernanceHeight`.
 4. Replace binaries atomically and verify `dochaind version --long`.
 5. Start validators first, then sentry/RPC/API nodes.

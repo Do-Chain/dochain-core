@@ -2,11 +2,15 @@ package keeper
 
 import (
 	"cosmossdk.io/math"
+	forktypes "github.com/Daviddochain/dochain-core/v4/types/fork"
 	sdk "github.com/cosmos/cosmos-sdk/types"
 )
 
-// SlashAndResetMissCounters jails operators who miss too many oracle votes and clears miss counters.
+// SlashAndResetMissCounters penalizes operators who miss too many oracle votes and clears miss counters.
 func (k Keeper) SlashAndResetMissCounters(ctx sdk.Context) {
+	height := ctx.BlockHeight()
+	distributionHeight := height - sdk.ValidatorUpdateDelay - 1
+
 	// slash_window / vote_period
 	votePeriodsPerWindow := uint64(
 		math.LegacyNewDec(int64(k.SlashWindow(ctx))).
@@ -14,6 +18,8 @@ func (k Keeper) SlashAndResetMissCounters(ctx sdk.Context) {
 			TruncateInt64(),
 	)
 	minValidPerWindow := k.MinValidPerWindow(ctx)
+	slashFraction := k.SlashFraction(ctx)
+	powerReduction := k.StakingKeeper.PowerReduction(ctx)
 
 	k.IterateMissCounters(ctx, func(operator sdk.ValAddress, missCounter uint64) bool {
 		// Calculate valid vote rate; (SlashWindow - MissCounter)/SlashWindow
@@ -33,6 +39,12 @@ func (k Keeper) SlashAndResetMissCounters(ctx sdk.Context) {
 					panic(err)
 				}
 
+				if !doOracleJailOnlyActive(ctx) {
+					k.StakingKeeper.Slash(
+						ctx, consAddr,
+						distributionHeight, validator.GetConsensusPower(powerReduction), slashFraction,
+					)
+				}
 				k.StakingKeeper.Jail(ctx, consAddr)
 			}
 		}
@@ -40,4 +52,8 @@ func (k Keeper) SlashAndResetMissCounters(ctx sdk.Context) {
 		k.DeleteMissCounter(ctx, operator)
 		return false
 	})
+}
+
+func doOracleJailOnlyActive(ctx sdk.Context) bool {
+	return forktypes.DoCommunityGovernanceHeight > 0 && ctx.BlockHeight() >= forktypes.DoCommunityGovernanceHeight
 }

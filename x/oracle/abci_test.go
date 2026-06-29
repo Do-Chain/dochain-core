@@ -471,6 +471,7 @@ func TestInvalidVotesSlashing(t *testing.T) {
 	input.OracleKeeper.SetTobinTax(input.Ctx, core.MicroKRWDenom, types.DefaultTobinTax)
 
 	votePeriodsPerWindow := sdkmath.LegacyNewDec(int64(input.OracleKeeper.SlashWindow(input.Ctx))).QuoInt64(int64(input.OracleKeeper.VotePeriod(input.Ctx))).TruncateInt64()
+	slashFraction := input.OracleKeeper.SlashFraction(input.Ctx)
 	minValidPerWindow := input.OracleKeeper.MinValidPerWindow(input.Ctx)
 
 	for i := uint64(0); i < uint64(sdkmath.LegacyOneDec().Sub(minValidPerWindow).MulInt64(votePeriodsPerWindow).TruncateInt64()); i++ {
@@ -493,7 +494,7 @@ func TestInvalidVotesSlashing(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, stakingAmt, validator.GetBondedTokens())
 
-	// one more miss vote will jail keeper.ValAddrs[1] without slashing delegator stake
+	// one more miss vote will incur keeper.ValAddrs[1] slashing
 	// Account 1, KRW
 	makeAggregatePrevoteAndVote(t, input, h, 0, sdk.DecCoins{{Denom: core.MicroKRWDenom, Amount: randomExchangeRate}}, 0)
 
@@ -507,8 +508,7 @@ func TestInvalidVotesSlashing(t *testing.T) {
 	oracle.EndBlocker(input.Ctx, input.OracleKeeper)
 	validator, err = input.StakingKeeper.Validator(input.Ctx, keeper.ValAddrs[1])
 	require.NoError(t, err)
-	require.Equal(t, stakingAmt, validator.GetBondedTokens())
-	require.True(t, validator.IsJailed())
+	require.Equal(t, sdkmath.LegacyOneDec().Sub(slashFraction).MulInt(stakingAmt).TruncateInt(), validator.GetBondedTokens())
 }
 
 func TestWhitelistSlashing(t *testing.T) {
@@ -516,6 +516,7 @@ func TestWhitelistSlashing(t *testing.T) {
 
 	votePeriodsPerWindow := sdkmath.LegacyNewDec(int64(input.OracleKeeper.SlashWindow(input.Ctx))).QuoInt64(int64(input.OracleKeeper.VotePeriod(input.Ctx))).TruncateInt64()
 	minValidPerWindow := input.OracleKeeper.MinValidPerWindow(input.Ctx)
+	slashFraction := input.OracleKeeper.SlashFraction(input.Ctx)
 
 	for i := uint64(0); i <= uint64(sdkmath.LegacyOneDec().Sub(minValidPerWindow).MulInt64(votePeriodsPerWindow).TruncateInt64()); i++ {
 		input.Ctx = input.Ctx.WithBlockHeight(input.Ctx.BlockHeight() + 1)
@@ -533,7 +534,7 @@ func TestWhitelistSlashing(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, stakingAmt, validator.GetBondedTokens())
 
-	// one more miss vote will jail Account 1 without slashing delegator stake
+	// one more miss vote will incur Account 1 slashing
 
 	// Account 2, KRW
 	makeAggregatePrevoteAndVote(t, input, h, 0, sdk.DecCoins{{Denom: core.MicroKRWDenom, Amount: randomExchangeRate}}, 1)
@@ -544,8 +545,7 @@ func TestWhitelistSlashing(t *testing.T) {
 	oracle.EndBlocker(input.Ctx, input.OracleKeeper)
 	validator, err = input.StakingKeeper.Validator(input.Ctx, keeper.ValAddrs[0])
 	require.NoError(t, err)
-	require.Equal(t, stakingAmt, validator.GetBondedTokens())
-	require.True(t, validator.IsJailed())
+	require.Equal(t, sdkmath.LegacyOneDec().Sub(slashFraction).MulInt(stakingAmt).TruncateInt(), validator.GetBondedTokens())
 }
 
 func TestNotPassedBallotSlashing(t *testing.T) {
