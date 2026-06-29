@@ -10,14 +10,15 @@ import (
 )
 
 const (
-	MicroDoDenom  = assets.MicroDoDenom
-	MicroSDRDenom = assets.MicroSDRDenom
-	MicroUSDDenom = assets.MicroUSDDenom
-	MicroKRWDenom = assets.MicroKRWDenom
-	MicroCNYDenom = assets.MicroCNYDenom
-	MicroGBPDenom = assets.MicroGBPDenom
-	MicroMNTDenom = assets.MicroMNTDenom
-	MicroUnit     = assets.MicroUnit
+	MicroDoDenom   = assets.MicroDoDenom
+	MicroDODxDenom = assets.MicroDODxDenom
+	MicroSDRDenom  = assets.MicroSDRDenom
+	MicroUSDDenom  = assets.MicroUSDDenom
+	MicroKRWDenom  = assets.MicroKRWDenom
+	MicroCNYDenom  = assets.MicroCNYDenom
+	MicroGBPDenom  = assets.MicroGBPDenom
+	MicroMNTDenom  = assets.MicroMNTDenom
+	MicroUnit      = assets.MicroUnit
 
 	BlocksPerMinute      = util.BlocksPerMinute
 	BlocksPerHour        = util.BlocksPerHour

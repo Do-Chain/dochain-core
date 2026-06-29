@@ -5,11 +5,8 @@ import (
 	sdk "github.com/cosmos/cosmos-sdk/types"
 )
 
-// SlashAndResetMissCounters do slash any operator who over criteria & clear all operators miss counter to zero
+// SlashAndResetMissCounters jails operators who miss too many oracle votes and clears miss counters.
 func (k Keeper) SlashAndResetMissCounters(ctx sdk.Context) {
-	height := ctx.BlockHeight()
-	distributionHeight := height - sdk.ValidatorUpdateDelay - 1
-
 	// slash_window / vote_period
 	votePeriodsPerWindow := uint64(
 		math.LegacyNewDec(int64(k.SlashWindow(ctx))).
@@ -17,8 +14,6 @@ func (k Keeper) SlashAndResetMissCounters(ctx sdk.Context) {
 			TruncateInt64(),
 	)
 	minValidPerWindow := k.MinValidPerWindow(ctx)
-	slashFraction := k.SlashFraction(ctx)
-	powerReduction := k.StakingKeeper.PowerReduction(ctx)
 
 	k.IterateMissCounters(ctx, func(operator sdk.ValAddress, missCounter uint64) bool {
 		// Calculate valid vote rate; (SlashWindow - MissCounter)/SlashWindow
@@ -38,10 +33,6 @@ func (k Keeper) SlashAndResetMissCounters(ctx sdk.Context) {
 					panic(err)
 				}
 
-				k.StakingKeeper.Slash(
-					ctx, consAddr,
-					distributionHeight, validator.GetConsensusPower(powerReduction), slashFraction,
-				)
 				k.StakingKeeper.Jail(ctx, consAddr)
 			}
 		}
@@ -50,9 +41,3 @@ func (k Keeper) SlashAndResetMissCounters(ctx sdk.Context) {
 		return false
 	})
 }
-
-
-
-
-
-

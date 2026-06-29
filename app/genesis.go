@@ -93,6 +93,7 @@ func hardenBankGenesis(genesis map[string]json.RawMessage) {
 	patchGenesisModule(genesis, "bank", func(state map[string]any) {
 		metadata, _ := state["denom_metadata"].([]any)
 		metadata = ensureMetadata(metadata, denomMetadata("udo", "do", "Do", "DO"))
+		metadata = ensureMetadata(metadata, denomMetadata("udodx", "dodx", "Do governance token", "DODx"))
 		metadata = ensureMetadata(metadata, denomMetadata("uusd", "usd", "Do USD oracle unit", "USD"))
 		if bankHasDenom(state, "ubaked") {
 			metadata = ensureMetadata(metadata, denomMetadata("ubaked", "baked", "Do baked token", "BAKED"))

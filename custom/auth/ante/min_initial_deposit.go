@@ -5,7 +5,6 @@ import (
 
 	errorsmod "cosmossdk.io/errors"
 	sdkmath "cosmossdk.io/math"
-	core "github.com/Daviddochain/dochain-core/v4/types"
 	sdk "github.com/cosmos/cosmos-sdk/types"
 	sdkerrors "github.com/cosmos/cosmos-sdk/types/errors"
 	govkeeper "github.com/cosmos/cosmos-sdk/x/gov/keeper"
@@ -53,10 +52,13 @@ func HandleCheckMinInitialDeposit(ctx sdk.Context, msg sdk.Msg, govKeeper govkee
 	if err != nil {
 		return err
 	}
+	if len(minDeposit.MinDeposit) == 0 {
+		return fmt.Errorf("governance min deposit is not configured")
+	}
 	requiredAmount := sdkmath.LegacyNewDecFromInt(minDeposit.MinDeposit[0].Amount).Mul(treasuryKeeper.GetMinInitialDepositRatio(ctx)).TruncateInt()
 
 	requiredDepositCoins := sdk.NewCoins(
-		sdk.NewCoin(core.MicroDoDenom, requiredAmount),
+		sdk.NewCoin(minDeposit.MinDeposit[0].Denom, requiredAmount),
 	)
 
 	if !initialDepositCoins.IsAllGTE(requiredDepositCoins) {
@@ -86,9 +88,3 @@ func (midd MinInitialDepositDecorator) AnteHandle(ctx sdk.Context, tx sdk.Tx, si
 
 	return next(ctx, tx, simulate)
 }
-
-
-
-
-
-

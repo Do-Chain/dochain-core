@@ -459,6 +459,7 @@ func NewAppKeepers(
 		bApp.MsgServiceRouter(),
 		govConfig,
 		authtypes.NewModuleAddress(govtypes.ModuleName).String(),
+		govkeeper.WithCustomCalculateVoteResultsAndVotingPowerFn(appKeepers.DoCommunityTallyFn()),
 	)
 	// Set legacy router for backwards compatibility with gov v1beta1
 	govKeeper.SetLegacyRouter(govRouter)

@@ -29,6 +29,7 @@ import (
 	v13 "github.com/Daviddochain/dochain-core/v4/app/upgrades/v13"
 	v13_1 "github.com/Daviddochain/dochain-core/v4/app/upgrades/v13_1"
 	v14_1 "github.com/Daviddochain/dochain-core/v4/app/upgrades/v14_1"
+	v15_1 "github.com/Daviddochain/dochain-core/v4/app/upgrades/v15_1"
 	v2 "github.com/Daviddochain/dochain-core/v4/app/upgrades/v2"
 	v3 "github.com/Daviddochain/dochain-core/v4/app/upgrades/v3"
 	v4 "github.com/Daviddochain/dochain-core/v4/app/upgrades/v4"
@@ -107,7 +108,9 @@ var (
 	}
 
 	// Forks defines forks to be applied to the network
-	Forks = []upgrades.Fork{}
+	Forks = []upgrades.Fork{
+		v15_1.Fork,
+	}
 )
 
 // Verify app interface at compile time

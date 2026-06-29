@@ -20,10 +20,8 @@ const (
 	// v1.0.5
 	// VersionMapEnableHeight - set the version map to enable software upgrades, approximately February 14, 2023
 	VersionMapEnableHeight = int64(11_543_150)
+	// v15_1
+	// DoCommunityGovernanceHeight enables the no-vote Do-Chain community governance fork.
+	// Leave as 0 until a coordinated activation height is chosen.
+	DoCommunityGovernanceHeight = int64(0)
 )
-
-
-
-
-
-

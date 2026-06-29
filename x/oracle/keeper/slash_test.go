@@ -43,7 +43,6 @@ func TestSlashAndResetMissCounters(t *testing.T) {
 	require.Equal(t, amt, v1.GetBondedTokens())
 
 	votePeriodsPerWindow := int64(input.OracleKeeper.SlashWindow(input.Ctx)) / int64(input.OracleKeeper.VotePeriod(input.Ctx))
-	slashFraction := input.OracleKeeper.SlashFraction(input.Ctx)
 	minValidVotes := input.OracleKeeper.MinValidPerWindow(input.Ctx).MulInt64(votePeriodsPerWindow).TruncateInt64()
 	// Case 1, no slash
 	input.OracleKeeper.SetMissCounter(input.Ctx, ValAddrs[0], uint64(votePeriodsPerWindow-minValidVotes))
@@ -54,12 +53,12 @@ func TestSlashAndResetMissCounters(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, amt, validator.GetBondedTokens())
 
-	// Case 2, slash
+	// Case 2, jail without slashing delegator stake
 	input.OracleKeeper.SetMissCounter(input.Ctx, ValAddrs[0], uint64(votePeriodsPerWindow-minValidVotes+1))
 	input.OracleKeeper.SlashAndResetMissCounters(input.Ctx)
 	validator, err = input.StakingKeeper.GetValidator(input.Ctx, ValAddrs[0])
 	require.NoError(t, err)
-	require.Equal(t, amt.Sub(slashFraction.MulInt(amt).TruncateInt()), validator.GetBondedTokens())
+	require.Equal(t, amt, validator.GetBondedTokens())
 	require.True(t, validator.IsJailed())
 
 	// Case 3, slash unbonded validator
@@ -91,9 +90,3 @@ func TestSlashAndResetMissCounters(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, amt, validator.Tokens)
 }
-
-
-
-
-
-
