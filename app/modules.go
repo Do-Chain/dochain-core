@@ -71,6 +71,8 @@ import (
 	ibctm "github.com/cosmos/ibc-go/v10/modules/light-clients/07-tendermint"
 )
 
+const buybackLiquidityPoolName = "buyback_liquidity_pool"
+
 var (
 	// ModuleBasics = The ModuleBasicManager is in charge of setting up basic,
 	// non-dependant module elements, such as codec registration
@@ -115,6 +117,7 @@ var (
 		markettypes.ModuleName:         {authtypes.Minter, authtypes.Burner},
 		oracletypes.ModuleName:         nil,
 		distrtypes.ModuleName:          nil,
+		buybackLiquidityPoolName:       nil,
 		treasurytypes.ModuleName:       {authtypes.Minter, authtypes.Burner},
 		stakingtypes.BondedPoolName:    {authtypes.Burner, authtypes.Staking},
 		stakingtypes.NotBondedPoolName: {authtypes.Burner, authtypes.Staking},
@@ -127,6 +130,7 @@ var (
 	allowedReceivingModAcc = map[string]bool{
 		oracletypes.ModuleName:       true,
 		treasurytypes.BurnModuleName: true,
+		buybackLiquidityPoolName:     true,
 	}
 )
 
