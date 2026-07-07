@@ -1,0 +1,35 @@
+syntax = "proto3";
+package do.dodxstaking.v1beta1;
+
+import "cosmos/base/v1beta1/coin.proto";
+import "cosmos_proto/cosmos.proto";
+import "gogoproto/gogo.proto";
+
+option go_package = "github.com/Daviddochain/dochain-core/v4/x/dodxstaking/types";
+
+// Query defines the DODx staking gRPC querier service.
+service Query {
+  // Stake returns one account's staked DODx.
+  rpc Stake(QueryStakeRequest) returns (QueryStakeResponse);
+
+  // TotalStaked returns the total DODx locked for governance.
+  rpc TotalStaked(QueryTotalStakedRequest) returns (QueryTotalStakedResponse);
+}
+
+// QueryStakeRequest is the request type for Query/Stake.
+message QueryStakeRequest {
+  string address = 1 [(cosmos_proto.scalar) = "cosmos.AddressString"];
+}
+
+// QueryStakeResponse is the response type for Query/Stake.
+message QueryStakeResponse {
+  cosmos.base.v1beta1.Coin amount = 1 [(gogoproto.nullable) = false];
+}
+
+// QueryTotalStakedRequest is the request type for Query/TotalStaked.
+message QueryTotalStakedRequest {}
+
+// QueryTotalStakedResponse is the response type for Query/TotalStaked.
+message QueryTotalStakedResponse {
+  cosmos.base.v1beta1.Coin amount = 1 [(gogoproto.nullable) = false];
+}

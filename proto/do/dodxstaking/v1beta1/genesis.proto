@@ -1,0 +1,13 @@
+syntax = "proto3";
+package do.dodxstaking.v1beta1;
+
+import "do/dodxstaking/v1beta1/stake.proto";
+import "gogoproto/gogo.proto";
+
+option go_package = "github.com/Daviddochain/dochain-core/v4/x/dodxstaking/types";
+
+// GenesisState defines x/dodxstaking genesis state.
+message GenesisState {
+  repeated StakeRecord stakes = 1 [(gogoproto.nullable) = false];
+  bool governance_enabled = 2;
+}

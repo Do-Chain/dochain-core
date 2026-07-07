@@ -29,6 +29,10 @@ func (appKeepers *AppKeepers) DoCommunityTallyFn() govkeeper.CalculateVoteResult
 			return appKeepers.defaultCommunityTallyFn(ctx, govKeeper, proposal, validators)
 		}
 
+		if appKeepers.DODxStakingKeeper.GovernanceEnabled(sdk.UnwrapSDKContext(ctx)) {
+			return appKeepers.dodxStakedTallyFn(ctx, govKeeper, proposal)
+		}
+
 		results := emptyCommunityTallyResults()
 
 		totalBonded, err := appKeepers.StakingKeeper.TotalBondedTokens(ctx)
@@ -95,6 +99,48 @@ func (appKeepers *AppKeepers) DoCommunityTallyFn() govkeeper.CalculateVoteResult
 
 		return totalVotingPower, results, nil
 	}
+}
+
+func (appKeepers *AppKeepers) dodxStakedTallyFn(
+	ctx context.Context,
+	govKeeper govkeeper.Keeper,
+	proposal v1.Proposal,
+) (sdkmath.LegacyDec, map[v1.VoteOption]sdkmath.LegacyDec, error) {
+	totalVotingPower := sdkmath.LegacyZeroDec()
+	results := emptyCommunityTallyResults()
+
+	sdkCtx := sdk.UnwrapSDKContext(ctx)
+	rng := collections.NewPrefixedPairRange[uint64, sdk.AccAddress](proposal.Id)
+	votesToRemove := []collections.Pair[uint64, sdk.AccAddress]{}
+
+	err := govKeeper.Votes.Walk(ctx, rng, func(key collections.Pair[uint64, sdk.AccAddress], vote v1.Vote) (bool, error) {
+		voter, err := appKeepers.AccountKeeper.AddressCodec().StringToBytes(vote.Voter)
+		if err != nil {
+			return false, err
+		}
+
+		stakedDODx := appKeepers.DODxStakingKeeper.GetStakeAmount(sdkCtx, voter)
+		votingPower := sdkmath.LegacyNewDecFromInt(stakedDODx)
+		for _, option := range vote.Options {
+			weight, _ := sdkmath.LegacyNewDecFromStr(option.Weight)
+			results[option.Option] = results[option.Option].Add(votingPower.Mul(weight))
+		}
+		totalVotingPower = totalVotingPower.Add(votingPower)
+
+		votesToRemove = append(votesToRemove, key)
+		return false, nil
+	})
+	if err != nil {
+		return sdkmath.LegacyZeroDec(), nil, fmt.Errorf("error while iterating DODx governance votes: %w", err)
+	}
+
+	for _, key := range votesToRemove {
+		if err := govKeeper.Votes.Remove(ctx, key); err != nil {
+			return sdkmath.LegacyDec{}, nil, fmt.Errorf("error while removing vote (%d/%s): %w", key.K1(), key.K2(), err)
+		}
+	}
+
+	return totalVotingPower, results, nil
 }
 
 func (appKeepers *AppKeepers) defaultCommunityTallyFn(
