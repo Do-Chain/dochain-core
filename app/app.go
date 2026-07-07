@@ -79,6 +79,7 @@ import (
 )
 
 const appName = "DoApp"
+const manualV16UpgradeFilename = "manual-v16-upgrade.json"
 
 var (
 	// DefaultNodeHome defines default home directories for dochaind
@@ -134,6 +135,9 @@ type DoApp struct {
 	interfaceRegistry codectypes.InterfaceRegistry
 
 	invCheckPeriod uint
+	homePath       string
+
+	manualV16UpgradePlan upgradetypes.Plan
 
 	// the module manager
 	mm *module.Manager
@@ -200,6 +204,7 @@ func NewDoApp(
 		interfaceRegistry: interfaceRegistry,
 		txConfig:          txConfig,
 		invCheckPeriod:    invCheckPeriod,
+		homePath:          homePath,
 	}
 
 	// Setup keepers
@@ -391,7 +396,14 @@ func (app *DoApp) EndBlocker(ctx sdk.Context) (sdk.EndBlock, error) {
 // PreBlocker runs before BeginBlocker in v0.50 and allows modules like x/upgrade
 // to make consensus parameter changes visible to the rest of the block.
 func (app *DoApp) PreBlocker(ctx sdk.Context, _ *abci.RequestFinalizeBlock) (*sdk.ResponsePreBlock, error) {
-	return app.mm.PreBlock(ctx)
+	resp, err := app.mm.PreBlock(ctx)
+	if err != nil {
+		return resp, err
+	}
+	if err := app.applyManualV16Upgrade(ctx); err != nil {
+		return nil, err
+	}
+	return resp, nil
 }
 
 // InitChainer application update at chain initialization
@@ -545,6 +557,17 @@ func (app *DoApp) setupUpgradeStoreLoaders() {
 		panic(fmt.Sprintf("failed to read upgrade info from disk %s", err))
 	}
 
+	if upgradeInfo.Name == "" {
+		manualV16Plan, found, err := readManualV16UpgradePlan(app.homePath)
+		if err != nil {
+			panic(fmt.Sprintf("failed to read manual v16 upgrade plan %s", err))
+		}
+		if found {
+			app.manualV16UpgradePlan = manualV16Plan
+			upgradeInfo = manualV16Plan
+		}
+	}
+
 	if app.UpgradeKeeper.IsSkipHeight(upgradeInfo.Height) {
 		return
 	}
@@ -555,6 +578,50 @@ func (app *DoApp) setupUpgradeStoreLoaders() {
 			app.SetStoreLoader(upgradetypes.UpgradeStoreLoader(upgradeInfo.Height, &storeUpgrades))
 		}
 	}
+}
+
+func (app *DoApp) applyManualV16Upgrade(ctx sdk.Context) error {
+	plan := app.manualV16UpgradePlan
+	if plan.Name == "" || ctx.BlockHeight() != plan.Height {
+		return nil
+	}
+
+	doneHeight, err := app.UpgradeKeeper.GetDoneHeight(ctx, plan.Name)
+	if err != nil {
+		return err
+	}
+	if doneHeight != 0 {
+		return nil
+	}
+
+	ctx.Logger().Info("applying manual v16 upgrade", "height", plan.Height)
+	return app.UpgradeKeeper.ApplyUpgrade(ctx, plan)
+}
+
+func readManualV16UpgradePlan(homePath string) (upgradetypes.Plan, bool, error) {
+	var plan upgradetypes.Plan
+	path := filepath.Join(homePath, "data", manualV16UpgradeFilename)
+	bz, err := os.ReadFile(path)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return plan, false, nil
+		}
+		return plan, false, err
+	}
+
+	if err := json.Unmarshal(bz, &plan); err != nil {
+		return plan, false, err
+	}
+	if plan.Name == "" {
+		plan.Name = v16.UpgradeName
+	}
+	if plan.Name != v16.UpgradeName {
+		return plan, false, fmt.Errorf("manual v16 upgrade plan name must be %q, got %q", v16.UpgradeName, plan.Name)
+	}
+	if err := plan.ValidateBasic(); err != nil {
+		return plan, false, err
+	}
+	return plan, true, nil
 }
 
 func (app *DoApp) setupUpgradeHandlers() {
