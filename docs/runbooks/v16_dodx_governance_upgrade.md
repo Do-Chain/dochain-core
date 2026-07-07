@@ -22,10 +22,16 @@ switches community governance voting power to staked DODx only.
 - Build command: `CGO_ENABLED=1 LEDGER_ENABLED=false make build`
 - Binary SHA256: `62b47006b19a367ae1ca9420c80cc28c9512b6eadb9ff05e3fd641fa157b8b6e`
 
-The binary has been staged on NodeNexus as:
+The binary has been staged on NodeNexus and Classicnodes as:
 
 ```bash
 /home/dochain/go/bin/dochaind-f938710-v16
+```
+
+It has been staged on DoFoundation as:
+
+```bash
+/usr/local/bin/dochaind-f938710-v16
 ```
 
 It has not replaced the live binary.
@@ -71,6 +77,6 @@ dochaind query upgrade applied v16 --home /home/dochain/.do
 ## Current Access Notes
 
 The inactive/test host can build the binary and is not running a chain service.
-NodeNexus is reachable and currently runs `dochaind` directly via systemd, not
-cosmovisor. The other validator root credentials need updating before this can
-be staged everywhere.
+NodeNexus and Classicnodes run `dochaind` directly via systemd under the
+`dochain` user. DoFoundation runs `dochaind` directly via systemd as `root`.
+MainFCD still needs access before the v16 binary can be staged everywhere.
