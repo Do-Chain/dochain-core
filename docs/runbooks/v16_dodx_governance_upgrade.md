@@ -15,26 +15,40 @@ switches community governance voting power to staked DODx only.
 
 ## Verified Build
 
-- Commit: `f93871038f77149787230a59745257b5bca95e5f`
+- Commit: `82d794fde965c94da580edcc116e8afa325cb989`
 - Branch: `v15-1-no-vote-upgrade`
 - Build host: inactive/test host, Linux amd64
 - Go: `go1.24.7`
 - Build command: `CGO_ENABLED=1 LEDGER_ENABLED=false make build`
-- Binary SHA256: `62b47006b19a367ae1ca9420c80cc28c9512b6eadb9ff05e3fd641fa157b8b6e`
+- Binary SHA256: `4c0104bfdffdf4cf7cdf21d23d68cee025e01fc09a0c0522e0813e9866531728`
 
 The binary has been staged on NodeNexus and Classicnodes as:
 
 ```bash
-/home/dochain/go/bin/dochaind-f938710-v16
+/home/dochain/go/bin/dochaind-82d794f-v16
 ```
 
 It has been staged on DoFoundation and MainFCD as:
 
 ```bash
-/usr/local/bin/dochaind-f938710-v16
+/usr/local/bin/dochaind-82d794f-v16
 ```
 
 It has not replaced the live binary.
+
+## Current Manual Coordination
+
+- Target height: `1991100`
+- ETA: about `2026-07-07T16:27:00Z`
+- Activation method: every main node has a root-owned watcher script that stops
+  `dochaind` at height `1991099`, writes
+  `data/manual-v16-upgrade.json`, backs up the live binary, installs the staged
+  `82d794f` binary, and restarts.
+
+The manual activation hook exists because normal governance voting cannot
+complete in a 30 minute window. The hook uses the same v16 upgrade handler as a
+normal software upgrade, but reads the agreed height from the local manual plan
+file.
 
 ## Do Not Restart Early
 
@@ -49,7 +63,7 @@ upgrade.
 2. Verify the hash on every node:
 
 ```bash
-sha256sum /path/to/dochaind-f938710-v16
+sha256sum /path/to/dochaind-82d794f-v16
 ```
 
 3. Submit and pass a software-upgrade proposal named exactly `v16`.
@@ -63,7 +77,7 @@ cp -a /home/dochain/go/bin/dochaind /home/dochain/go/bin/dochaind.pre-v16
 6. Replace the binary atomically:
 
 ```bash
-install -o root -g root -m 0755 /home/dochain/go/bin/dochaind-f938710-v16 /home/dochain/go/bin/dochaind
+install -o root -g root -m 0755 /home/dochain/go/bin/dochaind-82d794f-v16 /home/dochain/go/bin/dochaind
 ```
 
 7. Restart the daemon and watch logs for the `v16` upgrade handler.
