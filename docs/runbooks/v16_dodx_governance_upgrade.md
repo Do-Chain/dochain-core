@@ -28,7 +28,7 @@ The binary has been staged on NodeNexus and Classicnodes as:
 /home/dochain/go/bin/dochaind-f938710-v16
 ```
 
-It has been staged on DoFoundation as:
+It has been staged on DoFoundation and MainFCD as:
 
 ```bash
 /usr/local/bin/dochaind-f938710-v16
@@ -78,5 +78,5 @@ dochaind query upgrade applied v16 --home /home/dochain/.do
 
 The inactive/test host can build the binary and is not running a chain service.
 NodeNexus and Classicnodes run `dochaind` directly via systemd under the
-`dochain` user. DoFoundation runs `dochaind` directly via systemd as `root`.
-MainFCD still needs access before the v16 binary can be staged everywhere.
+`dochain` user. DoFoundation and MainFCD run `dochaind` directly via systemd as
+`root`. The v16 binary is staged on all four main nodes and is not active yet.
