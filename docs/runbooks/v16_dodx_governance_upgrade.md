@@ -34,16 +34,21 @@ It has been staged on DoFoundation and MainFCD as:
 /usr/local/bin/dochaind-82d794f-v16
 ```
 
-It has not replaced the live binary.
+This binary replaced the live binary on all four main nodes during the manual
+activation at height `1991100`.
 
-## Current Manual Coordination
+## Manual Activation Completed
 
 - Target height: `1991100`
-- ETA: about `2026-07-07T16:27:00Z`
-- Activation method: every main node has a root-owned watcher script that stops
-  `dochaind` at height `1991099`, writes
+- Activation time: about `2026-07-07T16:27:26Z`
+- Activation method: every main node used a root-owned watcher script that
+  stopped `dochaind` at height `1991099`, wrote
   `data/manual-v16-upgrade.json`, backs up the live binary, installs the staged
   `82d794f` binary, and restarts.
+- Verified applied height: `1991100`
+- Verified post-upgrade height: `1991162`
+- Verified post-upgrade app hash:
+  `2D4F482E3AC7921C05D5397C6B7C197B76547F9A80D8A827E5FED5F18F448492`
 
 The manual activation hook exists because normal governance voting cannot
 complete in a 30 minute window. The hook uses the same v16 upgrade handler as a
