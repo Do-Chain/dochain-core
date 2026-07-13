@@ -6,6 +6,7 @@ import (
 
 	"cosmossdk.io/math"
 	apptesting "github.com/Daviddochain/dochain-core/v4/app/testing"
+	customstaking "github.com/Daviddochain/dochain-core/v4/custom/staking"
 	"github.com/Daviddochain/dochain-core/v4/types"
 	simtestutil "github.com/cosmos/cosmos-sdk/testutil/sims"
 	sdk "github.com/cosmos/cosmos-sdk/types"
@@ -79,8 +80,51 @@ func (s *StakingTestSuite) TestValidatorVPLimit() {
 	s.Require().Equal("validator power is over the allowed limit", err.Error())
 }
 
+func (s *StakingTestSuite) TestEqualConsensusPowerEndBlock() {
+	s.Setup(s.T(), types.ColumbusChainID)
 
+	num := 2
+	addrDels := s.RandomAccountAddresses(num)
+	valAddrs := simtestutil.ConvertAddrsToValAddrs(addrDels)
+	PKs := simtestutil.CreateTestPubKeys(num)
+	amts := []math.Int{math.NewInt(1_000_000), math.NewInt(9_000_000)}
 
+	for i, addrDel := range addrDels {
+		s.FundAcc(addrDel, sdk.NewCoins(sdk.NewInt64Coin("udo", amts[i].Int64())))
+		err := s.App.BankKeeper.DelegateCoinsFromAccountToModule(s.Ctx, addrDel, stakingtypes.NotBondedPoolName, sdk.NewCoins(sdk.NewCoin("udo", amts[i])))
+		s.Require().NoError(err)
 
+		validator := testutil.NewValidator(s.T(), valAddrs[i], PKs[i])
+		validator, _ = validator.AddTokensFromDel(amts[i])
+		stakingkeeper.TestingUpdateValidator(s.App.StakingKeeper, s.Ctx, validator, true)
+	}
 
+	module := customstaking.NewAppModule(
+		s.App.AppCodec(),
+		s.App.StakingKeeper,
+		s.App.AccountKeeper,
+		s.App.BankKeeper,
+		s.App.ParamsKeeper,
+		s.App.GetSubspace(stakingtypes.ModuleName),
+	)
 
+	updates, err := module.EndBlock(s.Ctx)
+	s.Require().NoError(err)
+	s.Require().NotEmpty(updates)
+	for _, update := range updates {
+		if update.Power == 0 {
+			continue
+		}
+		s.Require().Equal(customstaking.EqualValidatorConsensusPower, update.Power)
+	}
+
+	hasStakeWeightedPower := false
+	err = s.App.StakingKeeper.IterateLastValidatorPowers(s.Ctx, func(_ sdk.ValAddress, power int64) (stop bool) {
+		if power > customstaking.EqualValidatorConsensusPower {
+			hasStakeWeightedPower = true
+		}
+		return false
+	})
+	s.Require().NoError(err)
+	s.Require().True(hasStakeWeightedPower)
+}

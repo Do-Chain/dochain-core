@@ -1,11 +1,13 @@
 package staking
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 
 	customtypes "github.com/Daviddochain/dochain-core/v4/custom/staking/types"
 	core "github.com/Daviddochain/dochain-core/v4/types"
+	abci "github.com/cometbft/cometbft/abci/types"
 	"github.com/cosmos/cosmos-sdk/codec"
 	"github.com/cosmos/cosmos-sdk/types/module"
 	paramskeeper "github.com/cosmos/cosmos-sdk/x/params/keeper"
@@ -14,6 +16,8 @@ import (
 	"github.com/cosmos/cosmos-sdk/x/staking/keeper"
 	stakingtypes "github.com/cosmos/cosmos-sdk/x/staking/types"
 )
+
+const EqualValidatorConsensusPower int64 = 1
 
 var (
 	_ module.AppModuleBasic = AppModuleBasic{}
@@ -90,8 +94,54 @@ func (am AppModule) RegisterServices(cfg module.Configurator) {
 	}
 }
 
+// EndBlock keeps the standard staking state transitions and stake-weighted
+// keeper accounting, but gives every active validator the same CometBFT
+// consensus power.
+func (am AppModule) EndBlock(ctx context.Context) ([]abci.ValidatorUpdate, error) {
+	standardUpdates, err := am.keeper.EndBlocker(ctx)
+	if err != nil {
+		return nil, err
+	}
 
+	return am.equalValidatorPowerUpdates(ctx, standardUpdates)
+}
 
+func (am AppModule) equalValidatorPowerUpdates(ctx context.Context, standardUpdates []abci.ValidatorUpdate) ([]abci.ValidatorUpdate, error) {
+	activeValidators, err := am.keeper.GetBondedValidatorsByPower(ctx)
+	if err != nil {
+		return nil, err
+	}
 
+	updates := make([]abci.ValidatorUpdate, 0, len(standardUpdates)+len(activeValidators))
+	for _, update := range standardUpdates {
+		if update.Power == 0 {
+			updates = append(updates, update)
+		}
+	}
 
+	for _, validator := range activeValidators {
+		update, err := equalPowerValidatorUpdate(validator)
+		if err != nil {
+			return nil, err
+		}
+		updates = append(updates, update)
+	}
 
+	if err := am.keeper.SetValidatorUpdates(ctx, updates); err != nil {
+		return nil, err
+	}
+
+	return updates, nil
+}
+
+func equalPowerValidatorUpdate(validator stakingtypes.Validator) (abci.ValidatorUpdate, error) {
+	pubKey, err := validator.TmConsPublicKey()
+	if err != nil {
+		return abci.ValidatorUpdate{}, err
+	}
+
+	return abci.ValidatorUpdate{
+		PubKey: pubKey,
+		Power:  EqualValidatorConsensusPower,
+	}, nil
+}
