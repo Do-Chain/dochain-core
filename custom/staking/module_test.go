@@ -80,7 +80,7 @@ func (s *StakingTestSuite) TestValidatorVPLimit() {
 	s.Require().Equal("validator power is over the allowed limit", err.Error())
 }
 
-func (s *StakingTestSuite) TestEqualConsensusPowerEndBlock() {
+func (s *StakingTestSuite) TestStakeWeightedConsensusPowerEndBlock() {
 	s.Setup(s.T(), types.ColumbusChainID)
 
 	num := 2
@@ -111,16 +111,19 @@ func (s *StakingTestSuite) TestEqualConsensusPowerEndBlock() {
 	updates, err := module.EndBlock(s.Ctx)
 	s.Require().NoError(err)
 	s.Require().NotEmpty(updates)
+	powers := make(map[int64]bool)
 	for _, update := range updates {
 		if update.Power == 0 {
 			continue
 		}
-		s.Require().Equal(customstaking.EqualValidatorConsensusPower, update.Power)
+		powers[update.Power] = true
 	}
+	s.Require().True(powers[1])
+	s.Require().True(powers[9])
 
 	hasStakeWeightedPower := false
 	err = s.App.StakingKeeper.IterateLastValidatorPowers(s.Ctx, func(_ sdk.ValAddress, power int64) (stop bool) {
-		if power > customstaking.EqualValidatorConsensusPower {
+		if power > 1 {
 			hasStakeWeightedPower = true
 		}
 		return false
