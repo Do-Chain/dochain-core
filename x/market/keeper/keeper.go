@@ -1,11 +1,13 @@
 package keeper
 
 import (
+	"bytes"
 	"fmt"
 
 	"cosmossdk.io/log"
 	"cosmossdk.io/math"
 	storetypes "cosmossdk.io/store/types"
+	core "github.com/Daviddochain/dochain-core/v4/types"
 	"github.com/Daviddochain/dochain-core/v4/x/market/types"
 	"github.com/cosmos/cosmos-sdk/codec"
 	sdk "github.com/cosmos/cosmos-sdk/types"
@@ -75,6 +77,9 @@ func (k Keeper) GetDoPoolDelta(ctx sdk.Context) math.LegacyDec {
 func (k Keeper) SetDoPoolDelta(ctx sdk.Context, delta math.LegacyDec) {
 	store := ctx.KVStore(k.storeKey)
 	bz := k.cdc.MustMarshal(&sdk.DecProto{Dec: delta})
+	if ctx.BlockHeight() >= core.ReplayWriteOptimizationHeight && bytes.Equal(store.Get(types.DoPoolDeltaKey), bz) {
+		return
+	}
 	store.Set(types.DoPoolDeltaKey, bz)
 }
 

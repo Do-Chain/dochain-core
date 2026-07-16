@@ -9,6 +9,7 @@ import (
 	core "github.com/Daviddochain/dochain-core/v4/types"
 	abci "github.com/cometbft/cometbft/abci/types"
 	"github.com/cosmos/cosmos-sdk/codec"
+	sdk "github.com/cosmos/cosmos-sdk/types"
 	"github.com/cosmos/cosmos-sdk/types/module"
 	paramskeeper "github.com/cosmos/cosmos-sdk/x/params/keeper"
 	paramtypes "github.com/cosmos/cosmos-sdk/x/params/types"
@@ -112,11 +113,24 @@ func (am AppModule) EndBlock(ctx context.Context) ([]abci.ValidatorUpdate, error
 	if err != nil {
 		return nil, err
 	}
+	if replayWriteOptimizationActive(ctx) && len(standardUpdates) == 0 {
+		existingUpdates, err := am.keeper.GetValidatorUpdates(ctx)
+		if err != nil {
+			return nil, err
+		}
+		if len(existingUpdates) > 0 {
+			return nil, nil
+		}
+	}
 	if err := am.keeper.SetValidatorUpdates(ctx, storedUpdates); err != nil {
 		return nil, err
 	}
 
 	return compactEqualValidatorPowerUpdates(standardUpdates), nil
+}
+
+func replayWriteOptimizationActive(ctx context.Context) bool {
+	return sdk.UnwrapSDKContext(ctx).BlockHeight() >= core.ReplayWriteOptimizationHeight
 }
 
 func (am AppModule) fullEqualValidatorPowerUpdates(ctx context.Context, standardUpdates []abci.ValidatorUpdate) ([]abci.ValidatorUpdate, error) {

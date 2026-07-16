@@ -7,6 +7,7 @@ module github.com/Daviddochain/dochain-core/v4
 require (
 	cosmossdk.io/api v0.9.2
 	cosmossdk.io/client/v2 v2.0.0-beta.8
+	cosmossdk.io/collections v1.4.0
 	cosmossdk.io/core v0.11.3
 	cosmossdk.io/errors v1.1.0
 	cosmossdk.io/log v1.6.1
@@ -46,7 +47,6 @@ require (
 	cloud.google.com/go/auth v0.16.4 // indirect
 	cloud.google.com/go/auth/oauth2adapt v0.2.8 // indirect
 	cloud.google.com/go/monitoring v1.24.2 // indirect
-	cosmossdk.io/collections v1.4.0 // indirect
 	cosmossdk.io/depinject v1.2.1 // indirect
 	cosmossdk.io/schema v1.1.0 // indirect
 	dario.cat/mergo v1.0.0 // indirect
@@ -262,9 +262,11 @@ replace (
 
 replace (
 	github.com/ChainSafe/go-schnorrkel => github.com/ChainSafe/go-schnorrkel v1.0.0
-	github.com/cosmos/cosmos-sdk => github.com/Do-Chain/dochain-cosmos-sdk v0.0.0-20260713182717-e4409c091aa7
+	github.com/cosmos/cosmos-sdk => github.com/Do-Chain/dochain-cosmos-sdk v0.0.0-20260716183814-7e237f11ee6d
 	// replace goleveldb to optimized one
 	github.com/syndtr/goleveldb => github.com/Daviddochain/goleveldb v0.0.0-20230914223247-2b28f6655121
 	go.etcd.io/bbolt => go.etcd.io/bbolt v1.3.7
 	golang.org/x/exp => golang.org/x/exp v0.0.0-20250506013437-ce4c2cf36ca6
 )
+
+replace github.com/CosmWasm/wasmd => ./third_party/wasmd
