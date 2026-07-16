@@ -1,7 +1,6 @@
 package keeper
 
 import (
-	"bytes"
 	"fmt"
 
 	"cosmossdk.io/log"
@@ -76,9 +75,6 @@ func (k Keeper) GetDoPoolDelta(ctx sdk.Context) math.LegacyDec {
 func (k Keeper) SetDoPoolDelta(ctx sdk.Context, delta math.LegacyDec) {
 	store := ctx.KVStore(k.storeKey)
 	bz := k.cdc.MustMarshal(&sdk.DecProto{Dec: delta})
-	if bytes.Equal(store.Get(types.DoPoolDeltaKey), bz) {
-		return
-	}
 	store.Set(types.DoPoolDeltaKey, bz)
 }
 

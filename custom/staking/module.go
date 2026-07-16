@@ -108,16 +108,6 @@ func (am AppModule) EndBlock(ctx context.Context) ([]abci.ValidatorUpdate, error
 		return nil, err
 	}
 
-	if len(standardUpdates) == 0 {
-		existingUpdates, err := am.keeper.GetValidatorUpdates(ctx)
-		if err != nil {
-			return nil, err
-		}
-		if len(existingUpdates) > 0 {
-			return nil, nil
-		}
-	}
-
 	storedUpdates, err := am.fullEqualValidatorPowerUpdates(ctx, standardUpdates)
 	if err != nil {
 		return nil, err
