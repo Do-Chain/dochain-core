@@ -1,11 +1,13 @@
 package staking
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 
 	customtypes "github.com/Daviddochain/dochain-core/v4/custom/staking/types"
 	core "github.com/Daviddochain/dochain-core/v4/types"
+	abci "github.com/cometbft/cometbft/abci/types"
 	"github.com/cosmos/cosmos-sdk/codec"
 	"github.com/cosmos/cosmos-sdk/types/module"
 	paramskeeper "github.com/cosmos/cosmos-sdk/x/params/keeper"
@@ -14,6 +16,8 @@ import (
 	"github.com/cosmos/cosmos-sdk/x/staking/keeper"
 	stakingtypes "github.com/cosmos/cosmos-sdk/x/staking/types"
 )
+
+const EqualValidatorConsensusPower int64 = 1
 
 var (
 	_ module.AppModuleBasic = AppModuleBasic{}
@@ -88,4 +92,76 @@ func (am AppModule) RegisterServices(cfg module.Configurator) {
 	if err := cfg.RegisterMigration(stakingtypes.ModuleName, 4, m.Migrate4to5); err != nil {
 		panic(fmt.Sprintf("failed to migrate x/%s from version 4 to 5: %v", stakingtypes.ModuleName, err))
 	}
+}
+
+// EndBlock preserves normal staking state transitions, but keeps the CometBFT
+// validator set at one-validator-one-power.
+//
+// The stored ValidatorUpdates value is intentionally kept compatible with the
+// previous binary: zero-power removals followed by every active validator at
+// equal power. That keeps historical replay and app hashes aligned. The return
+// value is compacted from the underlying staking updates, so CometBFT is not
+// asked to re-apply the unchanged active validator set on every block.
+func (am AppModule) EndBlock(ctx context.Context) ([]abci.ValidatorUpdate, error) {
+	standardUpdates, err := am.keeper.EndBlocker(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	storedUpdates, err := am.fullEqualValidatorPowerUpdates(ctx, standardUpdates)
+	if err != nil {
+		return nil, err
+	}
+	if err := am.keeper.SetValidatorUpdates(ctx, storedUpdates); err != nil {
+		return nil, err
+	}
+
+	return compactEqualValidatorPowerUpdates(standardUpdates), nil
+}
+
+func (am AppModule) fullEqualValidatorPowerUpdates(ctx context.Context, standardUpdates []abci.ValidatorUpdate) ([]abci.ValidatorUpdate, error) {
+	activeValidators, err := am.keeper.GetBondedValidatorsByPower(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	updates := make([]abci.ValidatorUpdate, 0, len(standardUpdates)+len(activeValidators))
+	for _, update := range standardUpdates {
+		if update.Power == 0 {
+			updates = append(updates, update)
+		}
+	}
+
+	for _, validator := range activeValidators {
+		update, err := equalPowerValidatorUpdate(validator)
+		if err != nil {
+			return nil, err
+		}
+		updates = append(updates, update)
+	}
+
+	return updates, nil
+}
+
+func compactEqualValidatorPowerUpdates(standardUpdates []abci.ValidatorUpdate) []abci.ValidatorUpdate {
+	updates := make([]abci.ValidatorUpdate, 0, len(standardUpdates))
+	for _, update := range standardUpdates {
+		if update.Power > 0 {
+			update.Power = EqualValidatorConsensusPower
+		}
+		updates = append(updates, update)
+	}
+	return updates
+}
+
+func equalPowerValidatorUpdate(validator stakingtypes.Validator) (abci.ValidatorUpdate, error) {
+	pubKey, err := validator.TmConsPublicKey()
+	if err != nil {
+		return abci.ValidatorUpdate{}, err
+	}
+
+	return abci.ValidatorUpdate{
+		PubKey: pubKey,
+		Power:  EqualValidatorConsensusPower,
+	}, nil
 }
