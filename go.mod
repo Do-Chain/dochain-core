@@ -262,7 +262,7 @@ replace (
 
 replace (
 	github.com/ChainSafe/go-schnorrkel => github.com/ChainSafe/go-schnorrkel v1.0.0
-	github.com/cosmos/cosmos-sdk => github.com/Do-Chain/dochain-cosmos-sdk v0.0.0-20260716183814-7e237f11ee6d
+	github.com/cosmos/cosmos-sdk => github.com/Do-Chain/dochain-cosmos-sdk v0.0.0-20260716210315-e8b670ef0907
 	// replace goleveldb to optimized one
 	github.com/syndtr/goleveldb => github.com/Daviddochain/goleveldb v0.0.0-20230914223247-2b28f6655121
 	go.etcd.io/bbolt => go.etcd.io/bbolt v1.3.7
