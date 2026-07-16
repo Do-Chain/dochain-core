@@ -1683,20 +1683,17 @@ func (s *AnteTestSuite) TestOracleZeroFee() {
 	// MsgAggregateDoRateVote
 	msg1 := oracletypes.NewMsgAggregateDoRateVote("salt", "exchange rates", addr1, sdk.ValAddress(val.GetOperator()))
 	s.txBuilder.SetMsgs(msg1)
+	beforeBalances := s.app.BankKeeper.GetAllBalances(s.ctx, addr1)
+	s.txBuilder.SetFeeAmount(sdk.NewCoins(sdk.NewInt64Coin(core.MicroSDRDenom, 12345)))
 	tx, err = s.CreateTestTx(privs, accNums, accSeqs, s.ctx.ChainID())
 	s.Require().NoError(err)
 
 	_, err = antehandler(s.ctx, tx, false)
 	s.Require().NoError(err)
 
-	// check fee collector empty
+	// check fee collector empty and feeder balance unchanged even if a fee was attached
 	balances = s.app.BankKeeper.GetAllBalances(s.ctx, s.app.AccountKeeper.GetModuleAddress(authtypes.FeeCollectorName))
 	s.Require().Equal(sdk.Coins{}, balances)
+	afterBalances := s.app.BankKeeper.GetAllBalances(s.ctx, addr1)
+	s.Require().Equal(beforeBalances, afterBalances)
 }
-
-
-
-
-
-
-

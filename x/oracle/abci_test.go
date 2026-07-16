@@ -494,7 +494,7 @@ func TestInvalidVotesSlashing(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, stakingAmt, validator.GetBondedTokens())
 
-	// one more miss vote will inccur keeper.ValAddrs[1] slashing
+	// one more miss vote will incur keeper.ValAddrs[1] slashing
 	// Account 1, KRW
 	makeAggregatePrevoteAndVote(t, input, h, 0, sdk.DecCoins{{Denom: core.MicroKRWDenom, Amount: randomExchangeRate}}, 0)
 
@@ -534,7 +534,7 @@ func TestWhitelistSlashing(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, stakingAmt, validator.GetBondedTokens())
 
-	// one more miss vote will inccur Account 1 slashing
+	// one more miss vote will incur Account 1 slashing
 
 	// Account 2, KRW
 	makeAggregatePrevoteAndVote(t, input, h, 0, sdk.DecCoins{{Denom: core.MicroKRWDenom, Amount: randomExchangeRate}}, 1)
@@ -701,9 +701,3 @@ func makeAggregatePrevoteAndVote(t *testing.T, input keeper.TestInput, h types.M
 	_, err = h.AggregateDoRateVote(input.Ctx.WithBlockHeight(height+1), voteMsg)
 	require.NoError(t, err)
 }
-
-
-
-
-
-

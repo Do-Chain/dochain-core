@@ -3,9 +3,11 @@ package gov
 import (
 	"encoding/json"
 
+	sdkmath "cosmossdk.io/math"
 	customtypes "github.com/Daviddochain/dochain-core/v4/custom/gov/types"
 	core "github.com/Daviddochain/dochain-core/v4/types"
 	"github.com/cosmos/cosmos-sdk/codec"
+	sdk "github.com/cosmos/cosmos-sdk/types"
 	"github.com/cosmos/cosmos-sdk/types/module"
 	"github.com/cosmos/cosmos-sdk/x/gov"
 	govclient "github.com/cosmos/cosmos-sdk/x/gov/client"
@@ -33,18 +35,11 @@ func (AppModuleBasic) RegisterLegacyAminoCodec(cdc *codec.LegacyAmino) {
 // DefaultGenesis returns default genesis state as raw bytes for the gov
 // module.
 func (am AppModuleBasic) DefaultGenesis(cdc codec.JSONCodec) json.RawMessage {
-	// customize to set default genesis state deposit denom to udo
+	// customize to set default genesis state proposal deposit denom to DODx
 	defaultGenesisState := v1.DefaultGenesisState()
-	defaultGenesisState.Params.MinDeposit[0].Denom = core.MicroDoDenom
-        if len(defaultGenesisState.Params.ExpeditedMinDeposit) > 0 {
-                defaultGenesisState.Params.ExpeditedMinDeposit[0].Denom = core.MicroDoDenom
-        }
+	proposalDeposit := sdk.NewCoin(core.MicroDODxDenom, sdkmath.NewInt(core.MicroUnit))
+	defaultGenesisState.Params.MinDeposit = sdk.NewCoins(proposalDeposit)
+	defaultGenesisState.Params.ExpeditedMinDeposit = sdk.NewCoins(proposalDeposit)
 
 	return cdc.MustMarshalJSON(defaultGenesisState)
 }
-
-
-
-
-
-

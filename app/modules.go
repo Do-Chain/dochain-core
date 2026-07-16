@@ -24,6 +24,8 @@ import (
 	customstaking "github.com/Daviddochain/dochain-core/v4/custom/staking"
 	customupgrade "github.com/Daviddochain/dochain-core/v4/custom/upgrade"
 	customwasm "github.com/Daviddochain/dochain-core/v4/custom/wasm"
+	"github.com/Daviddochain/dochain-core/v4/x/dodxstaking"
+	dodxstakingtypes "github.com/Daviddochain/dochain-core/v4/x/dodxstaking/types"
 	"github.com/Daviddochain/dochain-core/v4/x/dyncomm"
 	dyncommtypes "github.com/Daviddochain/dochain-core/v4/x/dyncomm/types"
 	"github.com/Daviddochain/dochain-core/v4/x/market"
@@ -71,6 +73,8 @@ import (
 	ibctm "github.com/cosmos/ibc-go/v10/modules/light-clients/07-tendermint"
 )
 
+const buybackLiquidityPoolName = "buyback_liquidity_pool"
+
 var (
 	// ModuleBasics = The ModuleBasicManager is in charge of setting up basic,
 	// non-dependant module elements, such as codec registration
@@ -101,6 +105,7 @@ var (
 		oracle.AppModuleBasic{},
 		market.AppModuleBasic{},
 		treasury.AppModuleBasic{},
+		dodxstaking.AppModuleBasic{},
 		customwasm.AppModuleBasic{},
 		dyncomm.AppModuleBasic{},
 		mfa.AppModuleBasic{},
@@ -115,10 +120,12 @@ var (
 		markettypes.ModuleName:         {authtypes.Minter, authtypes.Burner},
 		oracletypes.ModuleName:         nil,
 		distrtypes.ModuleName:          nil,
+		buybackLiquidityPoolName:       nil,
 		treasurytypes.ModuleName:       {authtypes.Minter, authtypes.Burner},
 		stakingtypes.BondedPoolName:    {authtypes.Burner, authtypes.Staking},
 		stakingtypes.NotBondedPoolName: {authtypes.Burner, authtypes.Staking},
 		govtypes.ModuleName:            {authtypes.Burner},
+		dodxstakingtypes.ModuleName:    nil,
 		ibctransfertypes.ModuleName:    {authtypes.Minter, authtypes.Burner},
 		icatypes.ModuleName:            nil,
 		wasmtypes.ModuleName:           {authtypes.Burner},
@@ -127,6 +134,7 @@ var (
 	allowedReceivingModAcc = map[string]bool{
 		oracletypes.ModuleName:       true,
 		treasurytypes.BurnModuleName: true,
+		buybackLiquidityPoolName:     true,
 	}
 )
 
@@ -157,6 +165,7 @@ func appModules(
 		ica.NewAppModule(&app.ICAControllerKeeper, &app.ICAHostKeeper),
 		oracle.NewAppModule(appCodec, app.OracleKeeper, app.AccountKeeper, app.BankKeeper),
 		treasury.NewAppModule(appCodec, app.TreasuryKeeper),
+		dodxstaking.NewAppModule(appCodec, app.DODxStakingKeeper),
 		customwasm.NewAppModule(appCodec, &app.WasmKeeper, app.StakingKeeper, app.AccountKeeper, app.BankKeeper, app.MsgServiceRouter(), app.GetSubspace(wasmtypes.ModuleName), app.GetKey(wasmtypes.StoreKey)),
 		dyncomm.NewAppModule(appCodec, app.DyncommKeeper, app.StakingKeeper),
 		mfa.NewAppModule(app.MFAKeeper),
@@ -188,6 +197,7 @@ func simulationModules(
 		oracle.NewAppModule(appCodec, app.OracleKeeper, app.AccountKeeper, app.BankKeeper),
 		market.NewAppModule(appCodec, app.MarketKeeper, app.AccountKeeper, app.BankKeeper, app.OracleKeeper),
 		treasury.NewAppModule(appCodec, app.TreasuryKeeper),
+		dodxstaking.NewAppModule(appCodec, app.DODxStakingKeeper),
 		customwasm.NewAppModule(appCodec, &app.WasmKeeper, app.StakingKeeper, app.AccountKeeper, app.BankKeeper, app.MsgServiceRouter(), app.GetSubspace(wasmtypes.ModuleName), app.GetKey(wasmtypes.StoreKey)),
 		dyncomm.NewAppModule(appCodec, app.DyncommKeeper, app.StakingKeeper),
 		mfa.NewAppModule(app.MFAKeeper),
@@ -218,6 +228,7 @@ func orderBeginBlockers() []string {
 		oracletypes.ModuleName,
 		treasurytypes.ModuleName,
 		markettypes.ModuleName,
+		dodxstakingtypes.ModuleName,
 		wasmtypes.ModuleName,
 		dyncommtypes.ModuleName,
 		mfatypes.ModuleName,
@@ -251,6 +262,7 @@ func orderEndBlockers() []string {
 		oracletypes.ModuleName,
 		treasurytypes.ModuleName,
 		markettypes.ModuleName,
+		dodxstakingtypes.ModuleName,
 		wasmtypes.ModuleName,
 		dyncommtypes.ModuleName,
 		mfatypes.ModuleName,
@@ -289,6 +301,7 @@ func orderInitGenesis() []string {
 		markettypes.ModuleName,
 		oracletypes.ModuleName,
 		treasurytypes.ModuleName,
+		dodxstakingtypes.ModuleName,
 		wasmtypes.ModuleName,
 		dyncommtypes.ModuleName,
 		mfatypes.ModuleName,

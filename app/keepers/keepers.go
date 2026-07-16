@@ -18,6 +18,8 @@ import (
 	customstaking "github.com/Daviddochain/dochain-core/v4/custom/staking"
 	customwasmkeeper "github.com/Daviddochain/dochain-core/v4/custom/wasm/keeper"
 	dochainwasm "github.com/Daviddochain/dochain-core/v4/wasmbinding"
+	dodxstakingkeeper "github.com/Daviddochain/dochain-core/v4/x/dodxstaking/keeper"
+	dodxstakingtypes "github.com/Daviddochain/dochain-core/v4/x/dodxstaking/types"
 	dyncommkeeper "github.com/Daviddochain/dochain-core/v4/x/dyncomm/keeper"
 	dyncommtypes "github.com/Daviddochain/dochain-core/v4/x/dyncomm/types"
 	marketkeeper "github.com/Daviddochain/dochain-core/v4/x/market/keeper"
@@ -98,6 +100,7 @@ type AppKeepers struct {
 	MarketKeeper          marketkeeper.Keeper
 	TreasuryKeeper        treasurykeeper.Keeper
 	WasmKeeper            wasmkeeper.Keeper
+	DODxStakingKeeper     dodxstakingkeeper.Keeper
 	DyncommKeeper         dyncommkeeper.Keeper
 	MFAKeeper             mfakeeper.Keeper
 	IBCHooksKeeper        *ibchookskeeper.Keeper
@@ -142,6 +145,7 @@ func NewAppKeepers(
 		markettypes.StoreKey:         storetypes.NewKVStoreKey(markettypes.StoreKey),
 		treasurytypes.StoreKey:       storetypes.NewKVStoreKey(treasurytypes.StoreKey),
 		wasmtypes.StoreKey:           storetypes.NewKVStoreKey(wasmtypes.StoreKey),
+		dodxstakingtypes.StoreKey:    storetypes.NewKVStoreKey(dodxstakingtypes.StoreKey),
 		dyncommtypes.StoreKey:        storetypes.NewKVStoreKey(dyncommtypes.StoreKey),
 		mfatypes.StoreKey:            storetypes.NewKVStoreKey(mfatypes.StoreKey),
 	}
@@ -334,6 +338,12 @@ func NewAppKeepers(
 		appCodec,
 		appKeepers.keys[mfatypes.StoreKey],
 	)
+	appKeepers.DODxStakingKeeper = dodxstakingkeeper.NewKeeper(
+		appCodec,
+		appKeepers.keys[dodxstakingtypes.StoreKey],
+		appKeepers.AccountKeeper,
+		appKeepers.BankKeeper,
+	)
 	hooksKeeper := ibchookskeeper.NewKeeper(
 		appKeepers.keys[ibchookstypes.StoreKey],
 	)
@@ -459,6 +469,7 @@ func NewAppKeepers(
 		bApp.MsgServiceRouter(),
 		govConfig,
 		authtypes.NewModuleAddress(govtypes.ModuleName).String(),
+		govkeeper.WithCustomCalculateVoteResultsAndVotingPowerFn(appKeepers.DoCommunityTallyFn()),
 	)
 	// Set legacy router for backwards compatibility with gov v1beta1
 	govKeeper.SetLegacyRouter(govRouter)
