@@ -72,8 +72,23 @@ fi
 for (( i=0; i<$TESTNET_NVAL; i++ )); do
     CURRENT=$BUILDDIR/node$i/dochaind
 
-    # change gov params voting_period
-    jq '.app_state.gov.voting_params.voting_period = "50s"' "$CURRENT/config/genesis.json" > "$CURRENT/config/genesis.json.tmp"
+    # Model mainnet's token roles in the upgrade network: DODX supplies
+    # governance voting power while DO remains the validator bond and fee denom.
+    DODX_PER_VALIDATOR=100000000
+    DODX_TOTAL=$((DODX_PER_VALIDATOR * TESTNET_NVAL))
+    jq \
+        --arg dodx_per_validator "$DODX_PER_VALIDATOR" \
+        --arg dodx_total "$DODX_TOTAL" \
+        '
+        .app_state.gov.voting_params.voting_period = "50s"
+        | .app_state.bank.balances |= map(
+            .coins = ((.coins + [{"denom": "udodx", "amount": $dodx_per_validator}]) | sort_by(.denom))
+        )
+        | .app_state.bank.supply = ((
+            .app_state.bank.supply + [{"denom": "udodx", "amount": $dodx_total}]
+          ) | sort_by(.denom))
+        | .app_state.dodxstaking.governance_enabled = true
+        ' "$CURRENT/config/genesis.json" > "$CURRENT/config/genesis.json.tmp"
     mv "$CURRENT/config/genesis.json.tmp" "$CURRENT/config/genesis.json"
 
     docker run --rm \

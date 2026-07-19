@@ -135,6 +135,31 @@ func runSimulation(
 	return stopEarly, simParams, err
 }
 
+func TestReadOnlyCustomQueryRoutesAreRegistered(t *testing.T) {
+	if !apptesting.WasmVMAvailable {
+		t.Skip("application construction requires a CGO-enabled WasmVM build")
+	}
+
+	db := dbm.NewMemDB()
+	t.Cleanup(func() { require.NoError(t, db.Close()) })
+
+	app := newSimulationApp(
+		sdklog.NewNopLogger(),
+		db,
+		t.TempDir(),
+		simtestutil.AppOptionsMap{},
+	)
+	for _, path := range []string{
+		"/do.market.v1beta1.Query/Swap",
+		"/do.treasury.v1beta1.Query/TaxRate",
+		"/do.treasury.v1beta1.Query/TaxCap",
+	} {
+		t.Run(path, func(t *testing.T) {
+			require.NotNil(t, app.GRPCQueryRouter().Route(path))
+		})
+	}
+}
+
 func simulationAppStateFn(app *doapp.DoApp) simtypes.AppStateFn {
 	return simtestutil.AppStateFnWithExtendedCb(
 		app.AppCodec(),
