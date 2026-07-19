@@ -13,6 +13,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
       - uses: actions/setup-go@v5
         with:
           go-version: "1.25.12"
@@ -29,7 +31,11 @@ jobs:
       - name: run linting
         if: env.GIT_DIFF || startsWith(github.ref, 'refs/heads/release/')
         run: |
-          make lint
+          if [[ "${GITHUB_REF}" == "refs/heads/main" ]]; then
+            make lint
+          else
+            make lint-new LINT_BASE_REV=origin/main
+          fi
 
 
 

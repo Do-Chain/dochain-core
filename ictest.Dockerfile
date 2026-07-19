@@ -3,7 +3,7 @@
 ARG source=./
 ARG GO_VERSION="1.25.12"
 ARG BUILDPLATFORM=linux/amd64
-ARG BASE_IMAGE="golang:${GO_VERSION}-alpine3.22"
+ARG BASE_IMAGE="golang:${GO_VERSION}-alpine3.23"
 FROM --platform=${BUILDPLATFORM} ${BASE_IMAGE} AS base
 
 ###############################################################################
