@@ -36,6 +36,7 @@ jobs:
       - name: Build ${{matrix.build_type}}
         shell: bash
         run: |
+          set +e
           set -o pipefail
           log_file="build-${{matrix.build_type}}.log"
           make ${{matrix.build_type}} 2>&1 | tee "${log_file}"
