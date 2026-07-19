@@ -27,7 +27,7 @@ jobs:
             **/go.mod
             **/go.sum
       - name: run linting
-        if: env.GIT_DIFF
+        if: env.GIT_DIFF || startsWith(github.ref, 'refs/heads/release/')
         run: |
           make lint
 

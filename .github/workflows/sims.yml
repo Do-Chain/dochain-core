@@ -72,11 +72,11 @@ jobs:
         with:
           path: ~/go/bin
           key: ${{ runner.os }}-go-runsim-binary
-        if: env.GIT_DIFF
+        if: env.GIT_DIFF || startsWith(github.ref, 'refs/heads/release/')
       - name: test-sim-nondeterminism
         run: |
           make test-sim-nondeterminism
-        if: env.GIT_DIFF
+        if: env.GIT_DIFF || startsWith(github.ref, 'refs/heads/release/')
 
   test-sim-import-export:
     runs-on: ubuntu-latest
@@ -101,11 +101,11 @@ jobs:
         with:
           path: ~/go/bin
           key: ${{ runner.os }}-go-runsim-binary
-        if: env.GIT_DIFF
+        if: env.GIT_DIFF || startsWith(github.ref, 'refs/heads/release/')
       - name: test-sim-import-export
         run: |
           make test-sim-import-export
-        if: env.GIT_DIFF
+        if: env.GIT_DIFF || startsWith(github.ref, 'refs/heads/release/')
 
   test-sim-after-import:
     runs-on: ubuntu-latest
@@ -130,11 +130,11 @@ jobs:
         with:
           path: ~/go/bin
           key: ${{ runner.os }}-go-runsim-binary
-        if: env.GIT_DIFF
+        if: env.GIT_DIFF || startsWith(github.ref, 'refs/heads/release/')
       - name: test-sim-after-import
         run: |
           make test-sim-after-import
-        if: env.GIT_DIFF
+        if: env.GIT_DIFF || startsWith(github.ref, 'refs/heads/release/')
 
   test-sim-multi-seed-short:
     runs-on: ubuntu-latest
@@ -159,11 +159,11 @@ jobs:
         with:
           path: ~/go/bin
           key: ${{ runner.os }}-go-runsim-binary
-        if: env.GIT_DIFF
+        if: env.GIT_DIFF || startsWith(github.ref, 'refs/heads/release/')
       - name: test-sim-multi-seed-short
         run: |
           make test-sim-multi-seed-short
-        if: env.GIT_DIFF
+        if: env.GIT_DIFF || startsWith(github.ref, 'refs/heads/release/')
 
 
 

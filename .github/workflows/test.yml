@@ -57,11 +57,11 @@ jobs:
       - name: start localnet
         run: |
           make clean localnet-start
-        if: env.GIT_DIFF
+        if: env.GIT_DIFF || startsWith(github.ref, 'refs/heads/release/')
       - name: test liveness
         run: |
           ./contrib/localnet/localnet_liveness.sh 100 3 30 localhost
-        if: env.GIT_DIFF
+        if: env.GIT_DIFF || startsWith(github.ref, 'refs/heads/release/')
   upgrade-test:
     runs-on: ubuntu-latest
     timeout-minutes: 15
@@ -85,12 +85,12 @@ jobs:
       - name: start localnet
         run: |
           make clean localnet-start-upgrade
-        if: env.GIT_DIFF
+        if: env.GIT_DIFF || startsWith(github.ref, 'refs/heads/release/')
       - name: test upgrade
         run: |
           chmod +x -R ./contrib/updates
           ./contrib/updates/upgrade-test.sh
-        if: env.GIT_DIFF
+        if: env.GIT_DIFF || startsWith(github.ref, 'refs/heads/release/')
 
 
 
