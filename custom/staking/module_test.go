@@ -113,12 +113,17 @@ func (s *StakingTestSuite) TestEqualConsensusPowerOnlyWhenValidatorSetChanges() 
 
 	updates, err := module.EndBlock(s.Ctx)
 	s.Require().NoError(err)
-	s.Require().NotEmpty(updates)
-	for _, update := range updates {
-		if update.Power == 0 {
-			continue
+	// TestingUpdateValidator(..., true) has already applied the validator set,
+	// so EndBlock must not resend unchanged validators to CometBFT.
+	s.Require().Empty(updates)
+
+	storedUpdates, err := s.App.StakingKeeper.GetValidatorUpdates(s.Ctx)
+	s.Require().NoError(err)
+	s.Require().NotEmpty(storedUpdates)
+	for _, update := range storedUpdates {
+		if update.Power > 0 {
+			s.Require().Equal(customstaking.EqualValidatorConsensusPower, update.Power)
 		}
-		s.Require().Equal(customstaking.EqualValidatorConsensusPower, update.Power)
 	}
 
 	hasStakeWeightedPower := false
@@ -131,11 +136,33 @@ func (s *StakingTestSuite) TestEqualConsensusPowerOnlyWhenValidatorSetChanges() 
 	s.Require().NoError(err)
 	s.Require().True(hasStakeWeightedPower)
 
+	// Queue one additional validator without applying it. The next EndBlock must
+	// emit the change and must normalize its consensus power to one.
+	newAddrDel := s.RandomAccountAddresses(1)[0]
+	newValAddr := sdk.ValAddress(newAddrDel)
+	newAmount := math.NewInt(2_000_000)
+	s.FundAcc(newAddrDel, sdk.NewCoins(sdk.NewCoin("udo", newAmount)))
+	err = s.App.BankKeeper.DelegateCoinsFromAccountToModule(
+		s.Ctx,
+		newAddrDel,
+		stakingtypes.NotBondedPoolName,
+		sdk.NewCoins(sdk.NewCoin("udo", newAmount)),
+	)
+	s.Require().NoError(err)
+	newValidator := testutil.NewValidator(s.T(), newValAddr, simtestutil.CreateTestPubKeys(1)[0])
+	newValidator, _ = newValidator.AddTokensFromDel(newAmount)
+	stakingkeeper.TestingUpdateValidator(s.App.StakingKeeper, s.Ctx, newValidator, false)
+
+	updates, err = module.EndBlock(s.Ctx)
+	s.Require().NoError(err)
+	s.Require().NotEmpty(updates)
+	for _, update := range updates {
+		if update.Power > 0 {
+			s.Require().Equal(customstaking.EqualValidatorConsensusPower, update.Power)
+		}
+	}
+
 	updates, err = module.EndBlock(s.Ctx)
 	s.Require().NoError(err)
 	s.Require().Empty(updates)
-
-	storedUpdates, err := s.App.StakingKeeper.GetValidatorUpdates(s.Ctx)
-	s.Require().NoError(err)
-	s.Require().NotEmpty(storedUpdates)
 }

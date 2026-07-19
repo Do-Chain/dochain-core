@@ -1,62 +1,84 @@
-#!/bin/bash
+#!/usr/bin/env bash
+
+set -euo pipefail
 
 # this bash will prepare cosmosvisor to the build folder so that it can perform upgrade
 # this script is supposed to be run by Makefile
 
-# These fields should be fetched automatically in the future
-# Need to do more upgrade to see upgrade patterns
-OLD_VERSION=v3.1.6
+# Build the exact predecessor currently running on Do-Chain mainnet. Pinning the
+# commit and archive digest prevents a moved tag or modified download from
+# silently changing the upgrade test's starting binary.
+OLD_COMMIT=d9139025424184098dafb1fd67ef74499cf2e0b6
+OLD_ARCHIVE_SHA256=ade8b21a2cdc5c4eea12d427bd758eaf670bfd40079909a0f451e3094af59334
+OLD_SOURCE_DIR=dochain-core-${OLD_COMMIT}
+OLD_BASE_IMAGE=golang:1.24.7-alpine3.22
 # this command will retrieve the folder with the largest number in format v<number>
 SOFTWARE_UPGRADE_NAME=$(ls -d -- ./app/upgrades/v* | sort -Vr | head -n 1 | xargs basename)
-BUILDDIR=$1
-TESTNET_NVAL=$2
-TESTNET_CHAINID=$3
+BUILDDIR=${1:-}
+TESTNET_NVAL=${2:-}
+TESTNET_CHAINID=${3:-}
 
 # check if BUILDDIR is set
 if [ -z "$BUILDDIR" ]; then
     echo "BUILDDIR is not set"
     exit 1
 fi
+if [ -z "$TESTNET_NVAL" ] || [ -z "$TESTNET_CHAINID" ]; then
+    echo "TESTNET_NVAL and TESTNET_CHAINID must be set"
+    exit 1
+fi
 
 # install old version of dochaind
 
-## check if _build/classic-${OLD_VERSION} exists
-if [ ! -d "_build/core-${OLD_VERSION:1}" ]; then
-    mkdir _build
-    wget -c "https://github.com/Daviddochain/dochain-core/archive/refs/tags/${OLD_VERSION}.zip" -O _build/${OLD_VERSION}.zip
-    unzip _build/${OLD_VERSION}.zip -d _build
+## Fetch and verify the exact live predecessor source.
+if [ ! -d "_build/${OLD_SOURCE_DIR}" ]; then
+    mkdir -p _build
+    OLD_ARCHIVE="_build/${OLD_COMMIT}.tar.gz"
+    curl --fail --location --retry 3 \
+        "https://codeload.github.com/Do-Chain/dochain-core/tar.gz/${OLD_COMMIT}" \
+        --output "${OLD_ARCHIVE}"
+    echo "${OLD_ARCHIVE_SHA256}  ${OLD_ARCHIVE}" | sha256sum --check --strict
+    tar -xzf "${OLD_ARCHIVE}" -C _build
 fi
+test -f "_build/${OLD_SOURCE_DIR}/go.mod"
 
 ## check if $BUILDDIR/old/dochaind exists
 if [ ! -f "$BUILDDIR/old/dochaind" ]; then
-    mkdir -p $BUILDDIR/old
-    docker build --platform linux/amd64 --no-cache --build-arg source=./_build/core-${OLD_VERSION:1}/ --tag dochain/dochaind-binary.old -f contrib/updates/Dockerfile.old .
+    mkdir -p "$BUILDDIR/old"
+    docker build --platform linux/amd64 --no-cache \
+        --build-arg "source=./_build/${OLD_SOURCE_DIR}/" \
+        --build-arg "BASE_IMAGE=${OLD_BASE_IMAGE}" \
+        --build-arg "GIT_COMMIT=${OLD_COMMIT}" \
+        --build-arg "GIT_VERSION=v1.0.1-rc6" \
+        --tag dochain/dochaind-binary.old \
+        -f contrib/updates/Dockerfile.old .
     docker create --platform linux/amd64 --name old-temp dochain/dochaind-binary.old:latest
-    docker cp old-temp:/usr/local/bin/dochaind $BUILDDIR/old/
+    docker cp old-temp:/usr/local/bin/dochaind "$BUILDDIR/old/"
     docker rm old-temp
 fi
 
 # prepare cosmovisor config in TESTNET_NVAL nodes
 if [ ! -f "$BUILDDIR/node0/dochaind/config/genesis.json" ]; then docker run --rm \
     --user $(id -u):$(id -g) \
-    -v $BUILDDIR:/dochaind:Z \
+    -v "$BUILDDIR:/dochaind:Z" \
     -v /etc/group:/etc/group:ro \
     -v /etc/passwd:/etc/passwd:ro \
     -v /etc/shadow:/etc/shadow:ro \
     --entrypoint /dochaind/old/dochaind \
     --platform linux/amd64 \
-    daviddochain/dochaind-upgrade-env testnet --v $TESTNET_NVAL --chain-id $TESTNET_CHAINID -o . --starting-ip-address 192.168.10.2 --keyring-backend=test --home=temp; \
+    daviddochain/dochaind-upgrade-env testnet --v "$TESTNET_NVAL" --chain-id "$TESTNET_CHAINID" -o . --starting-ip-address 192.168.10.2 --keyring-backend=test --home=temp; \
 fi
 
 for (( i=0; i<$TESTNET_NVAL; i++ )); do
     CURRENT=$BUILDDIR/node$i/dochaind
 
     # change gov params voting_period
-    jq '.app_state.gov.voting_params.voting_period = "50s"' $CURRENT/config/genesis.json > $CURRENT/config/genesis.json.tmp && mv $CURRENT/config/genesis.json.tmp $CURRENT/config/genesis.json
+    jq '.app_state.gov.voting_params.voting_period = "50s"' "$CURRENT/config/genesis.json" > "$CURRENT/config/genesis.json.tmp"
+    mv "$CURRENT/config/genesis.json.tmp" "$CURRENT/config/genesis.json"
 
     docker run --rm \
         --user $(id -u):$(id -g) \
-        -v $BUILDDIR:/dochaind:Z \
+        -v "$BUILDDIR:/dochaind:Z" \
         -v /etc/group:/etc/group:ro \
         -v /etc/passwd:/etc/passwd:ro \
         -v /etc/shadow:/etc/shadow:ro \
@@ -66,9 +88,9 @@ for (( i=0; i<$TESTNET_NVAL; i++ )); do
         --entrypoint /dochaind/cosmovisor \
         --platform linux/amd64 \
         daviddochain/dochaind-upgrade-env init /dochaind/old/dochaind
-    mkdir -p $CURRENT/cosmovisor/upgrades/$SOFTWARE_UPGRADE_NAME/bin
-    cp $BUILDDIR/dochaind $CURRENT/cosmovisor/upgrades/$SOFTWARE_UPGRADE_NAME/bin
-    touch $CURRENT/cosmovisor/upgrades/$SOFTWARE_UPGRADE_NAME/upgrade-info.json
+    mkdir -p "$CURRENT/cosmovisor/upgrades/$SOFTWARE_UPGRADE_NAME/bin"
+    cp "$BUILDDIR/dochaind" "$CURRENT/cosmovisor/upgrades/$SOFTWARE_UPGRADE_NAME/bin"
+    touch "$CURRENT/cosmovisor/upgrades/$SOFTWARE_UPGRADE_NAME/upgrade-info.json"
 done
 
 

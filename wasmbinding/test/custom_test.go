@@ -6,7 +6,7 @@ import (
 )
 
 const (
-	DoBindingsPath          = "../testdata/do_reflect.wasm"
+	DoBindingsPath          = "../testdata/terra_reflect.wasm"
 	DoRenovatedBindingsPath = "../testdata/old/bindings_tester.wasm"
 	DoStargateQueryPath     = "../testdata/stargate_tester.wasm"
 )
@@ -92,9 +92,3 @@ func (s *WasmTestSuite) TestQueryBindingsAll() {
 		})
 	}
 }
-
-
-
-
-
-
