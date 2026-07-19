@@ -256,6 +256,12 @@ type QueryClient interface {
 	Stake(ctx context.Context, in *QueryStakeRequest, opts ...grpc.CallOption) (*QueryStakeResponse, error)
 	// TotalStaked returns the total DODx locked for governance.
 	TotalStaked(ctx context.Context, in *QueryTotalStakedRequest, opts ...grpc.CallOption) (*QueryTotalStakedResponse, error)
+	// Stakes returns native DODX stake records.
+	Stakes(ctx context.Context, in *QueryStakesRequest, opts ...grpc.CallOption) (*QueryStakesResponse, error)
+	// PendingRewards returns claimable DEX fee rewards for one staker.
+	PendingRewards(ctx context.Context, in *QueryPendingRewardsRequest, opts ...grpc.CallOption) (*QueryPendingRewardsResponse, error)
+	// RewardPool returns total accounted, unclaimed DEX fee rewards.
+	RewardPool(ctx context.Context, in *QueryRewardPoolRequest, opts ...grpc.CallOption) (*QueryRewardPoolResponse, error)
 }
 
 type queryClient struct {
@@ -284,12 +290,45 @@ func (c *queryClient) TotalStaked(ctx context.Context, in *QueryTotalStakedReque
 	return out, nil
 }
 
+func (c *queryClient) Stakes(ctx context.Context, in *QueryStakesRequest, opts ...grpc.CallOption) (*QueryStakesResponse, error) {
+	out := new(QueryStakesResponse)
+	err := c.cc.Invoke(ctx, "/do.dodxstaking.v1beta1.Query/Stakes", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *queryClient) PendingRewards(ctx context.Context, in *QueryPendingRewardsRequest, opts ...grpc.CallOption) (*QueryPendingRewardsResponse, error) {
+	out := new(QueryPendingRewardsResponse)
+	err := c.cc.Invoke(ctx, "/do.dodxstaking.v1beta1.Query/PendingRewards", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *queryClient) RewardPool(ctx context.Context, in *QueryRewardPoolRequest, opts ...grpc.CallOption) (*QueryRewardPoolResponse, error) {
+	out := new(QueryRewardPoolResponse)
+	err := c.cc.Invoke(ctx, "/do.dodxstaking.v1beta1.Query/RewardPool", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // QueryServer is the server API for Query service.
 type QueryServer interface {
 	// Stake returns one account's staked DODx.
 	Stake(context.Context, *QueryStakeRequest) (*QueryStakeResponse, error)
 	// TotalStaked returns the total DODx locked for governance.
 	TotalStaked(context.Context, *QueryTotalStakedRequest) (*QueryTotalStakedResponse, error)
+	// Stakes returns native DODX stake records.
+	Stakes(context.Context, *QueryStakesRequest) (*QueryStakesResponse, error)
+	// PendingRewards returns claimable DEX fee rewards for one staker.
+	PendingRewards(context.Context, *QueryPendingRewardsRequest) (*QueryPendingRewardsResponse, error)
+	// RewardPool returns total accounted, unclaimed DEX fee rewards.
+	RewardPool(context.Context, *QueryRewardPoolRequest) (*QueryRewardPoolResponse, error)
 }
 
 // UnimplementedQueryServer can be embedded to have forward compatible implementations.
@@ -301,6 +340,15 @@ func (*UnimplementedQueryServer) Stake(ctx context.Context, req *QueryStakeReque
 }
 func (*UnimplementedQueryServer) TotalStaked(ctx context.Context, req *QueryTotalStakedRequest) (*QueryTotalStakedResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method TotalStaked not implemented")
+}
+func (*UnimplementedQueryServer) Stakes(ctx context.Context, req *QueryStakesRequest) (*QueryStakesResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method Stakes not implemented")
+}
+func (*UnimplementedQueryServer) PendingRewards(ctx context.Context, req *QueryPendingRewardsRequest) (*QueryPendingRewardsResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method PendingRewards not implemented")
+}
+func (*UnimplementedQueryServer) RewardPool(ctx context.Context, req *QueryRewardPoolRequest) (*QueryRewardPoolResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method RewardPool not implemented")
 }
 
 func RegisterQueryServer(s grpc1.Server, srv QueryServer) {
@@ -343,6 +391,60 @@ func _Query_TotalStaked_Handler(srv interface{}, ctx context.Context, dec func(i
 	return interceptor(ctx, in, info, handler)
 }
 
+func _Query_Stakes_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(QueryStakesRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(QueryServer).Stakes(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/do.dodxstaking.v1beta1.Query/Stakes",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(QueryServer).Stakes(ctx, req.(*QueryStakesRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _Query_PendingRewards_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(QueryPendingRewardsRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(QueryServer).PendingRewards(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/do.dodxstaking.v1beta1.Query/PendingRewards",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(QueryServer).PendingRewards(ctx, req.(*QueryPendingRewardsRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _Query_RewardPool_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(QueryRewardPoolRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(QueryServer).RewardPool(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/do.dodxstaking.v1beta1.Query/RewardPool",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(QueryServer).RewardPool(ctx, req.(*QueryRewardPoolRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 var Query_serviceDesc = _Query_serviceDesc
 var _Query_serviceDesc = grpc.ServiceDesc{
 	ServiceName: "do.dodxstaking.v1beta1.Query",
@@ -355,6 +457,18 @@ var _Query_serviceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "TotalStaked",
 			Handler:    _Query_TotalStaked_Handler,
+		},
+		{
+			MethodName: "Stakes",
+			Handler:    _Query_Stakes_Handler,
+		},
+		{
+			MethodName: "PendingRewards",
+			Handler:    _Query_PendingRewards_Handler,
+		},
+		{
+			MethodName: "RewardPool",
+			Handler:    _Query_RewardPool_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

@@ -22,6 +22,18 @@ func TestValidateGenesis(t *testing.T) {
 			},
 		},
 		GovernanceEnabled: true,
+		RewardAccumulators: []RewardAmountRecord{
+			{Denom: core.MicroDoDenom, Amount: "1000000000000000000"},
+		},
+		RewardPools: []RewardAmountRecord{
+			{Denom: core.MicroDoDenom, Amount: "1000"},
+		},
+		RewardDebts: []AccountRewardAmountRecord{
+			{Address: addr.String(), Denom: core.MicroDoDenom, Amount: "1"},
+		},
+		PendingRewards: []AccountRewardAmountRecord{
+			{Address: addr.String(), Denom: core.MicroDoDenom, Amount: "10"},
+		},
 	}
 	require.NoError(t, ValidateGenesis(valid))
 
@@ -48,4 +60,27 @@ func TestValidateGenesis(t *testing.T) {
 		},
 	}
 	require.ErrorIs(t, ValidateGenesis(wrongDenom), ErrInvalidStakeDenom)
+
+	duplicateRewardDenom := &GenesisState{
+		RewardPools: []RewardAmountRecord{
+			{Denom: core.MicroDoDenom, Amount: "1"},
+			{Denom: core.MicroDoDenom, Amount: "2"},
+		},
+	}
+	require.Error(t, ValidateGenesis(duplicateRewardDenom))
+
+	invalidRewardAmount := &GenesisState{
+		RewardPools: []RewardAmountRecord{
+			{Denom: core.MicroDoDenom, Amount: "0"},
+		},
+	}
+	require.Error(t, ValidateGenesis(invalidRewardAmount))
+
+	duplicateAccountReward := &GenesisState{
+		PendingRewards: []AccountRewardAmountRecord{
+			{Address: addr.String(), Denom: core.MicroDoDenom, Amount: "1"},
+			{Address: addr.String(), Denom: core.MicroDoDenom, Amount: "2"},
+		},
+	}
+	require.Error(t, ValidateGenesis(duplicateAccountReward))
 }

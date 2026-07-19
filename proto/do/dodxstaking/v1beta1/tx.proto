@@ -15,6 +15,12 @@ service Msg {
 
   // Unstake unlocks staked DODx and removes the same governance voting power.
   rpc Unstake(MsgUnstake) returns (MsgUnstakeResponse);
+
+  // DepositRewards deposits DEX fee rewards for native DODX stakers.
+  rpc DepositRewards(MsgDepositRewards) returns (MsgDepositRewardsResponse);
+
+  // ClaimRewards claims DEX fee rewards earned by native DODX stake.
+  rpc ClaimRewards(MsgClaimRewards) returns (MsgClaimRewardsResponse);
 }
 
 // MsgStake locks DODx for governance voting power.
@@ -42,3 +48,37 @@ message MsgUnstake {
 
 // MsgUnstakeResponse defines the Msg/Unstake response type.
 message MsgUnstakeResponse {}
+
+// MsgDepositRewards deposits DEX fee rewards into x/dodxstaking.
+message MsgDepositRewards {
+  option (cosmos.msg.v1.signer)      = "depositor";
+  option (gogoproto.equal)           = false;
+  option (gogoproto.goproto_getters) = false;
+
+  string depositor = 1 [(cosmos_proto.scalar) = "cosmos.AddressString"];
+  repeated cosmos.base.v1beta1.Coin amount = 2 [
+    (gogoproto.nullable)     = false,
+    (gogoproto.castrepeated) = "github.com/cosmos/cosmos-sdk/types.Coins"
+  ];
+}
+
+// MsgDepositRewardsResponse defines the Msg/DepositRewards response type.
+message MsgDepositRewardsResponse {}
+
+// MsgClaimRewards claims DEX fee rewards for a native DODX staker.
+message MsgClaimRewards {
+  option (cosmos.msg.v1.signer)      = "claimer";
+  option (gogoproto.equal)           = false;
+  option (gogoproto.goproto_getters) = false;
+
+  string claimer = 1 [(cosmos_proto.scalar) = "cosmos.AddressString"];
+  repeated string denoms = 2;
+}
+
+// MsgClaimRewardsResponse defines the Msg/ClaimRewards response type.
+message MsgClaimRewardsResponse {
+  repeated cosmos.base.v1beta1.Coin amount = 1 [
+    (gogoproto.nullable)     = false,
+    (gogoproto.castrepeated) = "github.com/cosmos/cosmos-sdk/types.Coins"
+  ];
+}

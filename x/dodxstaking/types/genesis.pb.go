@@ -25,8 +25,12 @@ const _ = proto.GoGoProtoPackageIsVersion3 // please upgrade the proto package
 
 // GenesisState defines x/dodxstaking genesis state.
 type GenesisState struct {
-	Stakes            []StakeRecord `protobuf:"bytes,1,rep,name=stakes,proto3" json:"stakes"`
-	GovernanceEnabled bool          `protobuf:"varint,2,opt,name=governance_enabled,json=governanceEnabled,proto3" json:"governance_enabled,omitempty"`
+	Stakes             []StakeRecord               `protobuf:"bytes,1,rep,name=stakes,proto3" json:"stakes"`
+	GovernanceEnabled  bool                        `protobuf:"varint,2,opt,name=governance_enabled,json=governanceEnabled,proto3" json:"governance_enabled,omitempty"`
+	RewardAccumulators []RewardAmountRecord        `protobuf:"bytes,3,rep,name=reward_accumulators,json=rewardAccumulators,proto3" json:"reward_accumulators"`
+	RewardPools        []RewardAmountRecord        `protobuf:"bytes,4,rep,name=reward_pools,json=rewardPools,proto3" json:"reward_pools"`
+	RewardDebts        []AccountRewardAmountRecord `protobuf:"bytes,5,rep,name=reward_debts,json=rewardDebts,proto3" json:"reward_debts"`
+	PendingRewards     []AccountRewardAmountRecord `protobuf:"bytes,6,rep,name=pending_rewards,json=pendingRewards,proto3" json:"pending_rewards"`
 }
 
 func (m *GenesisState) Reset()         { *m = GenesisState{} }
@@ -74,6 +78,34 @@ func (m *GenesisState) GetGovernanceEnabled() bool {
 		return m.GovernanceEnabled
 	}
 	return false
+}
+
+func (m *GenesisState) GetRewardAccumulators() []RewardAmountRecord {
+	if m != nil {
+		return m.RewardAccumulators
+	}
+	return nil
+}
+
+func (m *GenesisState) GetRewardPools() []RewardAmountRecord {
+	if m != nil {
+		return m.RewardPools
+	}
+	return nil
+}
+
+func (m *GenesisState) GetRewardDebts() []AccountRewardAmountRecord {
+	if m != nil {
+		return m.RewardDebts
+	}
+	return nil
+}
+
+func (m *GenesisState) GetPendingRewards() []AccountRewardAmountRecord {
+	if m != nil {
+		return m.PendingRewards
+	}
+	return nil
 }
 
 func init() {

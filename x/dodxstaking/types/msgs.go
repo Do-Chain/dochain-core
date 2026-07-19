@@ -11,11 +11,15 @@ import (
 var (
 	_ sdk.Msg = &MsgStake{}
 	_ sdk.Msg = &MsgUnstake{}
+	_ sdk.Msg = &MsgDepositRewards{}
+	_ sdk.Msg = &MsgClaimRewards{}
 )
 
 const (
-	TypeMsgStake   = "stake"
-	TypeMsgUnstake = "unstake"
+	TypeMsgStake          = "stake"
+	TypeMsgUnstake        = "unstake"
+	TypeMsgDepositRewards = "deposit_rewards"
+	TypeMsgClaimRewards   = "claim_rewards"
 )
 
 // NewMsgStake creates a MsgStake instance.
@@ -74,6 +78,93 @@ func (msg MsgUnstake) GetSigners() []sdk.AccAddress {
 
 func (msg MsgUnstake) ValidateBasic() error {
 	return validateStakeMsg(msg.Staker, msg.Amount)
+}
+
+// NewMsgDepositRewards creates a MsgDepositRewards instance.
+func NewMsgDepositRewards(depositor sdk.AccAddress, amount sdk.Coins) *MsgDepositRewards {
+	return &MsgDepositRewards{
+		Depositor: depositor.String(),
+		Amount:    amount,
+	}
+}
+
+func (msg MsgDepositRewards) Route() string { return RouterKey }
+
+func (msg MsgDepositRewards) Type() string { return TypeMsgDepositRewards }
+
+func (msg MsgDepositRewards) GetSignBytes() []byte {
+	return sdk.MustSortJSON(ModuleCdc.MustMarshalJSON(&msg))
+}
+
+func (msg MsgDepositRewards) GetSigners() []sdk.AccAddress {
+	depositor, err := sdk.AccAddressFromBech32(msg.Depositor)
+	if err != nil {
+		panic(err)
+	}
+
+	return []sdk.AccAddress{depositor}
+}
+
+func (msg MsgDepositRewards) ValidateBasic() error {
+	if _, err := sdk.AccAddressFromBech32(msg.Depositor); err != nil {
+		return errorsmod.Wrapf(sdkerrors.ErrInvalidAddress, "invalid depositor address (%s)", err)
+	}
+
+	if !msg.Amount.IsValid() || !msg.Amount.IsAllPositive() {
+		return errorsmod.Wrap(ErrInvalidRewardAmount, msg.Amount.String())
+	}
+
+	for _, coin := range msg.Amount {
+		if err := validateRewardDenom(coin.Denom); err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+// NewMsgClaimRewards creates a MsgClaimRewards instance.
+func NewMsgClaimRewards(claimer sdk.AccAddress, denoms []string) *MsgClaimRewards {
+	return &MsgClaimRewards{
+		Claimer: claimer.String(),
+		Denoms:  denoms,
+	}
+}
+
+func (msg MsgClaimRewards) Route() string { return RouterKey }
+
+func (msg MsgClaimRewards) Type() string { return TypeMsgClaimRewards }
+
+func (msg MsgClaimRewards) GetSignBytes() []byte {
+	return sdk.MustSortJSON(ModuleCdc.MustMarshalJSON(&msg))
+}
+
+func (msg MsgClaimRewards) GetSigners() []sdk.AccAddress {
+	claimer, err := sdk.AccAddressFromBech32(msg.Claimer)
+	if err != nil {
+		panic(err)
+	}
+
+	return []sdk.AccAddress{claimer}
+}
+
+func (msg MsgClaimRewards) ValidateBasic() error {
+	if _, err := sdk.AccAddressFromBech32(msg.Claimer); err != nil {
+		return errorsmod.Wrapf(sdkerrors.ErrInvalidAddress, "invalid claimer address (%s)", err)
+	}
+
+	seen := map[string]bool{}
+	for _, denom := range msg.Denoms {
+		if seen[denom] {
+			return errorsmod.Wrapf(ErrInvalidRewardDenom, "duplicate denom %s", denom)
+		}
+		seen[denom] = true
+		if err := validateRewardDenom(denom); err != nil {
+			return err
+		}
+	}
+
+	return nil
 }
 
 func validateStakeMsg(staker string, amount sdk.Coin) error {

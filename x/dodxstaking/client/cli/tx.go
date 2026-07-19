@@ -22,8 +22,65 @@ func GetTxCmd() *cobra.Command {
 	cmd.AddCommand(
 		GetStakeCmd(),
 		GetUnstakeCmd(),
+		GetDepositRewardsCmd(),
+		GetClaimRewardsCmd(),
 	)
 
+	return cmd
+}
+
+// GetDepositRewardsCmd creates a rewards deposit transaction command.
+func GetDepositRewardsCmd() *cobra.Command {
+	cmd := &cobra.Command{
+		Use:   "deposit-rewards [amount]",
+		Args:  cobra.ExactArgs(1),
+		Short: "Deposit DEX fee rewards for native DODx stakers",
+		RunE: func(cmd *cobra.Command, args []string) error {
+			clientCtx, err := client.GetClientTxContext(cmd)
+			if err != nil {
+				return err
+			}
+
+			amount, err := sdk.ParseCoinsNormalized(args[0])
+			if err != nil {
+				return err
+			}
+
+			msg := types.NewMsgDepositRewards(clientCtx.GetFromAddress(), amount)
+			if err := msg.ValidateBasic(); err != nil {
+				return err
+			}
+
+			return tx.GenerateOrBroadcastTxCLI(clientCtx, cmd.Flags(), msg)
+		},
+	}
+
+	flags.AddTxFlagsToCmd(cmd)
+	return cmd
+}
+
+// GetClaimRewardsCmd creates a rewards claim transaction command.
+func GetClaimRewardsCmd() *cobra.Command {
+	cmd := &cobra.Command{
+		Use:   "claim-rewards [denom...]",
+		Args:  cobra.ArbitraryArgs,
+		Short: "Claim DEX fee rewards earned by native DODx stake",
+		RunE: func(cmd *cobra.Command, args []string) error {
+			clientCtx, err := client.GetClientTxContext(cmd)
+			if err != nil {
+				return err
+			}
+
+			msg := types.NewMsgClaimRewards(clientCtx.GetFromAddress(), args)
+			if err := msg.ValidateBasic(); err != nil {
+				return err
+			}
+
+			return tx.GenerateOrBroadcastTxCLI(clientCtx, cmd.Flags(), msg)
+		},
+	}
+
+	flags.AddTxFlagsToCmd(cmd)
 	return cmd
 }
 

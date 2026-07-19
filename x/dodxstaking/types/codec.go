@@ -13,6 +13,8 @@ import (
 func RegisterLegacyAminoCodec(cdc *codec.LegacyAmino) {
 	legacy.RegisterAminoMsg(cdc, &MsgStake{}, "dodxstaking/MsgStake")
 	legacy.RegisterAminoMsg(cdc, &MsgUnstake{}, "dodxstaking/MsgUnstake")
+	legacy.RegisterAminoMsg(cdc, &MsgDepositRewards{}, "dodxstaking/MsgDepositRewards")
+	legacy.RegisterAminoMsg(cdc, &MsgClaimRewards{}, "dodxstaking/MsgClaimRewards")
 }
 
 // RegisterInterfaces registers the module's implementations.
@@ -20,6 +22,8 @@ func RegisterInterfaces(registry codectypes.InterfaceRegistry) {
 	registry.RegisterImplementations((*sdk.Msg)(nil),
 		&MsgStake{},
 		&MsgUnstake{},
+		&MsgDepositRewards{},
+		&MsgClaimRewards{},
 	)
 	msgservice.RegisterMsgServiceDesc(registry, &_Msg_serviceDesc)
 }

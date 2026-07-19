@@ -2,7 +2,9 @@ syntax = "proto3";
 package do.dodxstaking.v1beta1;
 
 import "cosmos/base/v1beta1/coin.proto";
+import "cosmos/base/query/v1beta1/pagination.proto";
 import "cosmos_proto/cosmos.proto";
+import "do/dodxstaking/v1beta1/stake.proto";
 import "gogoproto/gogo.proto";
 
 option go_package = "github.com/Daviddochain/dochain-core/v4/x/dodxstaking/types";
@@ -14,6 +16,15 @@ service Query {
 
   // TotalStaked returns the total DODx locked for governance.
   rpc TotalStaked(QueryTotalStakedRequest) returns (QueryTotalStakedResponse);
+
+  // Stakes returns native DODX stake records.
+  rpc Stakes(QueryStakesRequest) returns (QueryStakesResponse);
+
+  // PendingRewards returns claimable DEX fee rewards for one staker.
+  rpc PendingRewards(QueryPendingRewardsRequest) returns (QueryPendingRewardsResponse);
+
+  // RewardPool returns total accounted, unclaimed DEX fee rewards.
+  rpc RewardPool(QueryRewardPoolRequest) returns (QueryRewardPoolResponse);
 }
 
 // QueryStakeRequest is the request type for Query/Stake.
@@ -32,4 +43,39 @@ message QueryTotalStakedRequest {}
 // QueryTotalStakedResponse is the response type for Query/TotalStaked.
 message QueryTotalStakedResponse {
   cosmos.base.v1beta1.Coin amount = 1 [(gogoproto.nullable) = false];
+}
+
+// QueryStakesRequest is the request type for Query/Stakes.
+message QueryStakesRequest {
+  cosmos.base.query.v1beta1.PageRequest pagination = 1;
+}
+
+// QueryStakesResponse is the response type for Query/Stakes.
+message QueryStakesResponse {
+  repeated StakeRecord stakes = 1 [(gogoproto.nullable) = false];
+  cosmos.base.query.v1beta1.PageResponse pagination = 2;
+}
+
+// QueryPendingRewardsRequest is the request type for Query/PendingRewards.
+message QueryPendingRewardsRequest {
+  string address = 1 [(cosmos_proto.scalar) = "cosmos.AddressString"];
+}
+
+// QueryPendingRewardsResponse is the response type for Query/PendingRewards.
+message QueryPendingRewardsResponse {
+  repeated cosmos.base.v1beta1.Coin rewards = 1 [
+    (gogoproto.nullable)     = false,
+    (gogoproto.castrepeated) = "github.com/cosmos/cosmos-sdk/types.Coins"
+  ];
+}
+
+// QueryRewardPoolRequest is the request type for Query/RewardPool.
+message QueryRewardPoolRequest {}
+
+// QueryRewardPoolResponse is the response type for Query/RewardPool.
+message QueryRewardPoolResponse {
+  repeated cosmos.base.v1beta1.Coin rewards = 1 [
+    (gogoproto.nullable)     = false,
+    (gogoproto.castrepeated) = "github.com/cosmos/cosmos-sdk/types.Coins"
+  ];
 }

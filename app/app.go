@@ -31,6 +31,7 @@ import (
 	v14_1 "github.com/Daviddochain/dochain-core/v4/app/upgrades/v14_1"
 	v15_1 "github.com/Daviddochain/dochain-core/v4/app/upgrades/v15_1"
 	v16 "github.com/Daviddochain/dochain-core/v4/app/upgrades/v16"
+	v17 "github.com/Daviddochain/dochain-core/v4/app/upgrades/v17"
 	v2 "github.com/Daviddochain/dochain-core/v4/app/upgrades/v2"
 	v3 "github.com/Daviddochain/dochain-core/v4/app/upgrades/v3"
 	v4 "github.com/Daviddochain/dochain-core/v4/app/upgrades/v4"
@@ -108,6 +109,7 @@ var (
 		v13_1.Upgrade,
 		v14_1.Upgrade,
 		v16.Upgrade,
+		v17.Upgrade,
 	}
 
 	// Forks defines forks to be applied to the network

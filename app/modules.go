@@ -135,6 +135,7 @@ var (
 		oracletypes.ModuleName:       true,
 		treasurytypes.BurnModuleName: true,
 		buybackLiquidityPoolName:     true,
+		dodxstakingtypes.ModuleName:  true,
 	}
 )
 

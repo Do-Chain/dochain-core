@@ -237,6 +237,10 @@ type MsgClient interface {
 	Stake(ctx context.Context, in *MsgStake, opts ...grpc.CallOption) (*MsgStakeResponse, error)
 	// Unstake unlocks staked DODx and removes the same governance voting power.
 	Unstake(ctx context.Context, in *MsgUnstake, opts ...grpc.CallOption) (*MsgUnstakeResponse, error)
+	// DepositRewards deposits DEX fees for DODX stakers.
+	DepositRewards(ctx context.Context, in *MsgDepositRewards, opts ...grpc.CallOption) (*MsgDepositRewardsResponse, error)
+	// ClaimRewards claims DEX fee rewards earned by native DODX stake.
+	ClaimRewards(ctx context.Context, in *MsgClaimRewards, opts ...grpc.CallOption) (*MsgClaimRewardsResponse, error)
 }
 
 type msgClient struct {
@@ -265,12 +269,34 @@ func (c *msgClient) Unstake(ctx context.Context, in *MsgUnstake, opts ...grpc.Ca
 	return out, nil
 }
 
+func (c *msgClient) DepositRewards(ctx context.Context, in *MsgDepositRewards, opts ...grpc.CallOption) (*MsgDepositRewardsResponse, error) {
+	out := new(MsgDepositRewardsResponse)
+	err := c.cc.Invoke(ctx, "/do.dodxstaking.v1beta1.Msg/DepositRewards", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *msgClient) ClaimRewards(ctx context.Context, in *MsgClaimRewards, opts ...grpc.CallOption) (*MsgClaimRewardsResponse, error) {
+	out := new(MsgClaimRewardsResponse)
+	err := c.cc.Invoke(ctx, "/do.dodxstaking.v1beta1.Msg/ClaimRewards", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // MsgServer is the server API for Msg service.
 type MsgServer interface {
 	// Stake locks DODx for governance voting power.
 	Stake(context.Context, *MsgStake) (*MsgStakeResponse, error)
 	// Unstake unlocks staked DODx and removes the same governance voting power.
 	Unstake(context.Context, *MsgUnstake) (*MsgUnstakeResponse, error)
+	// DepositRewards deposits DEX fees for DODX stakers.
+	DepositRewards(context.Context, *MsgDepositRewards) (*MsgDepositRewardsResponse, error)
+	// ClaimRewards claims DEX fee rewards earned by native DODX stake.
+	ClaimRewards(context.Context, *MsgClaimRewards) (*MsgClaimRewardsResponse, error)
 }
 
 // UnimplementedMsgServer can be embedded to have forward compatible implementations.
@@ -282,6 +308,12 @@ func (*UnimplementedMsgServer) Stake(ctx context.Context, req *MsgStake) (*MsgSt
 }
 func (*UnimplementedMsgServer) Unstake(ctx context.Context, req *MsgUnstake) (*MsgUnstakeResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method Unstake not implemented")
+}
+func (*UnimplementedMsgServer) DepositRewards(ctx context.Context, req *MsgDepositRewards) (*MsgDepositRewardsResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method DepositRewards not implemented")
+}
+func (*UnimplementedMsgServer) ClaimRewards(ctx context.Context, req *MsgClaimRewards) (*MsgClaimRewardsResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method ClaimRewards not implemented")
 }
 
 func RegisterMsgServer(s grpc1.Server, srv MsgServer) {
@@ -324,6 +356,42 @@ func _Msg_Unstake_Handler(srv interface{}, ctx context.Context, dec func(interfa
 	return interceptor(ctx, in, info, handler)
 }
 
+func _Msg_DepositRewards_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(MsgDepositRewards)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(MsgServer).DepositRewards(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/do.dodxstaking.v1beta1.Msg/DepositRewards",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(MsgServer).DepositRewards(ctx, req.(*MsgDepositRewards))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _Msg_ClaimRewards_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(MsgClaimRewards)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(MsgServer).ClaimRewards(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/do.dodxstaking.v1beta1.Msg/ClaimRewards",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(MsgServer).ClaimRewards(ctx, req.(*MsgClaimRewards))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 var Msg_serviceDesc = _Msg_serviceDesc
 var _Msg_serviceDesc = grpc.ServiceDesc{
 	ServiceName: "do.dodxstaking.v1beta1.Msg",
@@ -336,6 +404,14 @@ var _Msg_serviceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "Unstake",
 			Handler:    _Msg_Unstake_Handler,
+		},
+		{
+			MethodName: "DepositRewards",
+			Handler:    _Msg_DepositRewards_Handler,
+		},
+		{
+			MethodName: "ClaimRewards",
+			Handler:    _Msg_ClaimRewards_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},
