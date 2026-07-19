@@ -4,9 +4,11 @@ import (
 	"github.com/cosmos/cosmos-sdk/codec"
 	codectypes "github.com/cosmos/cosmos-sdk/codec/types"
 	cryptocodec "github.com/cosmos/cosmos-sdk/crypto/codec"
+	sdk "github.com/cosmos/cosmos-sdk/types"
 	authtypes "github.com/cosmos/cosmos-sdk/x/auth/types"
 	"github.com/cosmos/cosmos-sdk/x/auth/vesting/exported"
 	vestingtypes "github.com/cosmos/cosmos-sdk/x/auth/vesting/types"
+	"github.com/cosmos/gogoproto/proto"
 )
 
 // RegisterLegacyAminoCodec registers the account interfaces and concrete types on the
@@ -23,19 +25,35 @@ func RegisterInterfaces(registry codectypes.InterfaceRegistry) {
 	registry.RegisterInterface(
 		"cosmos.vesting.v1beta1.VestingAccount",
 		(*exported.VestingAccount)(nil),
+		&vestingtypes.ContinuousVestingAccount{},
+		&vestingtypes.DelayedVestingAccount{},
+		&vestingtypes.PeriodicVestingAccount{},
+		&vestingtypes.PermanentLockedAccount{},
 		&LazyGradedVestingAccount{},
 	)
 
+	vestingAccounts := []proto.Message{
+		&vestingtypes.BaseVestingAccount{},
+		&vestingtypes.DelayedVestingAccount{},
+		&vestingtypes.ContinuousVestingAccount{},
+		&vestingtypes.PeriodicVestingAccount{},
+		&vestingtypes.PermanentLockedAccount{},
+		&LazyGradedVestingAccount{},
+	}
+
 	registry.RegisterImplementations(
 		(*authtypes.AccountI)(nil),
-		&vestingtypes.BaseVestingAccount{},
-		&LazyGradedVestingAccount{},
+		vestingAccounts...,
+	)
+
+	registry.RegisterImplementations(
+		(*sdk.AccountI)(nil),
+		vestingAccounts...,
 	)
 
 	registry.RegisterImplementations(
 		(*authtypes.GenesisAccount)(nil),
-		&vestingtypes.BaseVestingAccount{},
-		&LazyGradedVestingAccount{},
+		vestingAccounts...,
 	)
 }
 
@@ -56,9 +74,3 @@ func init() {
 	cryptocodec.RegisterCrypto(amino)
 	amino.Seal()
 }
-
-
-
-
-
-

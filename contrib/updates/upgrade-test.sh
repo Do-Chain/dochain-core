@@ -53,7 +53,8 @@ if [[ -z "$GOV_AUTHORITY" || "$GOV_AUTHORITY" == "null" ]]; then
 fi
 
 PROPOSAL_FILE=$(mktemp)
-trap 'rm -f "$PROPOSAL_FILE"' EXIT
+CONTAINER_PROPOSAL_FILE=/tmp/dochain-upgrade-proposal.json
+trap 'rm -f "$PROPOSAL_FILE"; docker exec dochainnode1 rm -f "$CONTAINER_PROPOSAL_FILE" >/dev/null 2>&1 || true' EXIT
 jq -n \
     --arg authority "$GOV_AUTHORITY" \
     --arg name "$SOFTWARE_UPGRADE_NAME" \
@@ -71,8 +72,9 @@ jq -n \
         metadata: "",
         expedited: false
     }' > "$PROPOSAL_FILE"
+docker cp "$PROPOSAL_FILE" "dochainnode1:$CONTAINER_PROPOSAL_FILE"
 
-$BINARY_OLD tx gov submit-proposal "$PROPOSAL_FILE" --from node1 --keyring-backend test --chain-id "$CHAIN_ID" --home "$NODE1_HOME" --fees "1000udo" -y
+$BINARY_OLD tx gov submit-proposal "$CONTAINER_PROPOSAL_FILE" --from node1 --keyring-backend test --chain-id "$CHAIN_ID" --home "$NODE1_HOME" --fees "1000udo" -y
 
 sleep 5
 
