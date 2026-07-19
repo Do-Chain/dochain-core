@@ -49,3 +49,29 @@ func TestRandomizedGenStateCreatesEverySimulationAccount(t *testing.T) {
 		require.Equal(t, accounts[i].Address, genesisAccount.GetAddress())
 	}
 }
+
+func TestRandomizedGenStateUsesSDKAccountGeneratorWhenCallbackIsNil(t *testing.T) {
+	interfaceRegistry := codectypes.NewInterfaceRegistry()
+	authtypes.RegisterInterfaces(interfaceRegistry)
+	appCodec := codec.NewProtoCodec(interfaceRegistry)
+	accounts := []simtypes.Account{{
+		Address: sdk.AccAddress(bytes.Repeat([]byte{3}, 20)),
+	}}
+	simState := &module.SimulationState{
+		AppParams:    simtypes.AppParams{},
+		Cdc:          appCodec,
+		Rand:         rand.New(rand.NewSource(2)),
+		GenState:     map[string]json.RawMessage{},
+		Accounts:     accounts,
+		InitialStake: math.NewInt(100),
+		NumBonded:    int64(len(accounts)),
+		BondDenom:    sdk.DefaultBondDenom,
+		GenTimestamp: time.Unix(1, 0),
+	}
+
+	require.NotPanics(t, func() { RandomizedGenState(simState, nil) })
+
+	var genesis authtypes.GenesisState
+	appCodec.MustUnmarshalJSON(simState.GenState[authtypes.ModuleName], &genesis)
+	require.Len(t, genesis.Accounts, len(accounts))
+}

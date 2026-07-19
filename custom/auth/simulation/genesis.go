@@ -8,5 +8,8 @@ import (
 
 // RandomizedGenState generates a random GenesisState for auth
 func RandomizedGenState(simState *module.SimulationState, randGenAccountsFn authtypes.RandomGenesisAccountsFn) {
+	if randGenAccountsFn == nil {
+		randGenAccountsFn = authsimulation.RandomGenesisAccounts
+	}
 	authsimulation.RandomizedGenState(simState, randGenAccountsFn)
 }

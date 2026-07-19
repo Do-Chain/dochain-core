@@ -12,11 +12,18 @@ TESTNET_NVAL=${1:-7}
 # sleep to wait for localnet to come up
 sleep 10
 
-# 100 block from now
-STATUS_INFO=($($BINARY_OLD status --home "$NODE1_HOME" | jq -r '.NodeInfo.network,.SyncInfo.latest_block_height'))
-echo "${STATUS_INFO[*]}"
-CHAIN_ID=${STATUS_INFO[0]}
-UPGRADE_HEIGHT=$((STATUS_INFO[1] + 20))
+# Schedule the upgrade from the running chain state. Tendermint/CometBFT
+# versions differ in whether status JSON uses upper- or lower-case field names.
+STATUS_JSON=$($BINARY_OLD status --home "$NODE1_HOME" || true)
+CHAIN_ID=$(jq -r '.NodeInfo.network // .node_info.network // empty' <<<"$STATUS_JSON")
+CURRENT_HEIGHT=$(jq -r '.SyncInfo.latest_block_height // .sync_info.latest_block_height // empty' <<<"$STATUS_JSON")
+if [[ -z "$CHAIN_ID" || ! "$CURRENT_HEIGHT" =~ ^[0-9]+$ ]]; then
+    echo "ERROR: could not read chain ID and block height from node status"
+    echo "$STATUS_JSON"
+    exit 1
+fi
+echo "$CHAIN_ID $CURRENT_HEIGHT"
+UPGRADE_HEIGHT=$((CURRENT_HEIGHT + 20))
 echo "$UPGRADE_HEIGHT"
 
 docker exec dochainnode1 tar -cf ./dochaind.tar -C . dochaind
@@ -83,16 +90,21 @@ NIL_BLOCK=0
 LAST_BLOCK=0
 SAME_BLOCK=0
 while true; do 
-    BLOCK_HEIGHT=$($BINARY_OLD status --home "$NODE1_HOME" | jq '.SyncInfo.latest_block_height' -r)
-    # if BLOCK_HEIGHT is empty
-    if [[ -z $BLOCK_HEIGHT ]]; then
+    STATUS_JSON=$($BINARY_OLD status --home "$NODE1_HOME" || true)
+    BLOCK_HEIGHT=$(jq -r '.SyncInfo.latest_block_height // .sync_info.latest_block_height // empty' <<<"$STATUS_JSON")
+    # Treat missing and malformed heights as transient status failures.
+    if [[ ! $BLOCK_HEIGHT =~ ^[0-9]+$ ]]; then
         # if 5 nil blocks in a row, exit
         if [[ $NIL_BLOCK -ge 5 ]]; then
-            echo "ERROR: 5 nil blocks in a row"
-            break
+            echo "ERROR: node status returned no valid block height 5 times in a row"
+            docker logs dochainnode0
+            exit 1
         fi
         NIL_BLOCK=$((NIL_BLOCK + 1))
+        sleep 10
+        continue
     fi
+    NIL_BLOCK=0
 
     # if block height is not nil
     # if block height is same as last block height
