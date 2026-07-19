@@ -1,9 +1,9 @@
 # syntax=docker/dockerfile:1
 
 ARG source=./
-    ARG GO_VERSION="1.25.12"
-    ARG BUILDPLATFORM=linux/amd64
-    ARG BASE_IMAGE="golang:${GO_VERSION}-alpine3.21"
+ARG GO_VERSION="1.25.12"
+ARG BUILDPLATFORM=linux/amd64
+ARG BASE_IMAGE="golang:${GO_VERSION}-alpine3.21"
 FROM --platform=${BUILDPLATFORM} ${BASE_IMAGE} AS base
 
 ###############################################################################
@@ -46,6 +46,7 @@ RUN set -eux &&\
 # download dependencies to cache as layer
 WORKDIR ${GOPATH}/src/app
 COPY ${source}go.mod ${source}go.sum ./
+COPY ${source}third_party/wasmd/go.mod ${source}third_party/wasmd/go.sum ./third_party/wasmd/
 
 RUN --mount=type=cache,target=/root/.cache/go-build \
     --mount=type=cache,target=/root/go/pkg/mod \
