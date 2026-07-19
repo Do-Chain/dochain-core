@@ -7,16 +7,14 @@ import (
 	"strings"
 
 	"cosmossdk.io/math"
+	appparams "github.com/Daviddochain/dochain-core/v4/app/params"
 	core "github.com/Daviddochain/dochain-core/v4/types"
 	"github.com/Daviddochain/dochain-core/v4/x/market/types"
 	"github.com/cosmos/cosmos-sdk/baseapp"
 	"github.com/cosmos/cosmos-sdk/codec"
-	codectypes "github.com/cosmos/cosmos-sdk/codec/types"
-	"github.com/cosmos/cosmos-sdk/std"
 	simtestutil "github.com/cosmos/cosmos-sdk/testutil/sims"
 	sdk "github.com/cosmos/cosmos-sdk/types"
 	simtypes "github.com/cosmos/cosmos-sdk/types/simulation"
-	"github.com/cosmos/cosmos-sdk/x/auth/tx"
 	banksim "github.com/cosmos/cosmos-sdk/x/bank/simulation"
 	"github.com/cosmos/cosmos-sdk/x/simulation"
 )
@@ -95,9 +93,7 @@ func SimulateMsgSwap(
 
 		msg := types.NewMsgSwap(simAccount.Address, sdk.NewCoin(offerDenom, amount), askDenom)
 
-		ir := codectypes.NewInterfaceRegistry()
-		std.RegisterInterfaces(ir)
-		txGen := tx.NewTxConfig(codec.NewProtoCodec(ir), tx.DefaultSignModes)
+		txGen := appparams.MakeSimulationTxConfig()
 		tx, err := simtestutil.GenSignedMockTx(
 			r,
 			txGen,
@@ -174,9 +170,7 @@ func SimulateMsgSwapSend(
 
 		msg := types.NewMsgSwapSend(simAccount.Address, receiverAccount.Address, sdk.NewCoin(offerDenom, amount), askDenom)
 
-		ir := codectypes.NewInterfaceRegistry()
-		std.RegisterInterfaces(ir)
-		txGen := tx.NewTxConfig(codec.NewProtoCodec(ir), tx.DefaultSignModes)
+		txGen := appparams.MakeSimulationTxConfig()
 		tx, err := simtestutil.GenSignedMockTx(
 			r,
 			txGen,
@@ -204,9 +198,3 @@ func SimulateMsgSwapSend(
 		return simtypes.NewOperationMsg(msg, true, ""), nil, nil
 	}
 }
-
-
-
-
-
-

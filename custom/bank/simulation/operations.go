@@ -4,16 +4,13 @@ import (
 	"math/rand"
 	"strings"
 
+	appparams "github.com/Daviddochain/dochain-core/v4/app/params"
 	"github.com/cosmos/cosmos-sdk/baseapp"
-	"github.com/cosmos/cosmos-sdk/client"
 	"github.com/cosmos/cosmos-sdk/codec"
-	codectypes "github.com/cosmos/cosmos-sdk/codec/types"
 	cryptotypes "github.com/cosmos/cosmos-sdk/crypto/types"
-	"github.com/cosmos/cosmos-sdk/std"
 	simtestutil "github.com/cosmos/cosmos-sdk/testutil/sims"
 	sdk "github.com/cosmos/cosmos-sdk/types"
 	simtypes "github.com/cosmos/cosmos-sdk/types/simulation"
-	"github.com/cosmos/cosmos-sdk/x/auth/tx"
 	"github.com/cosmos/cosmos-sdk/x/bank/keeper"
 	banksim "github.com/cosmos/cosmos-sdk/x/bank/simulation"
 	banktypes "github.com/cosmos/cosmos-sdk/x/bank/types"
@@ -53,16 +50,6 @@ func WeightedOperations(
 			SimulateMsgMultiSend(ak, bk),
 		),
 	}
-}
-
-// makeTxConfig constructs a minimal client.TxConfig for simulations without pulling simapp.
-func makeTxConfig() client.TxConfig {
-	amino := codec.NewLegacyAmino()
-	ir := codectypes.NewInterfaceRegistry()
-	cdc := codec.NewProtoCodec(ir)
-	std.RegisterInterfaces(ir)
-	std.RegisterLegacyAminoCodec(amino)
-	return tx.NewTxConfig(cdc, tx.DefaultSignModes)
 }
 
 // SimulateMsgSend tests and runs a single msg send where both
@@ -123,7 +110,7 @@ func sendMsgSend(
 			return err
 		}
 	}
-	txGen := makeTxConfig()
+	txGen := appparams.MakeSimulationTxConfig()
 	tx, err := simtestutil.GenSignedMockTx(
 		r,
 		txGen,
@@ -271,7 +258,7 @@ func sendMsgMultiSend(
 		}
 	}
 
-	txGen := makeTxConfig()
+	txGen := appparams.MakeSimulationTxConfig()
 	tx, err := simtestutil.GenSignedMockTx(
 		r,
 		txGen,
@@ -322,9 +309,3 @@ func randomSendFields(
 
 	return simAccount, toSimAcc, sendCoins, false
 }
-
-
-
-
-
-

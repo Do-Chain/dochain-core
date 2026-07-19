@@ -91,7 +91,7 @@ jobs:
         run: go version
       - uses: technote-space/get-diff-action@v6
         with:
-          SUFFIX_FILTER: |
+          PATTERNS: |
             **/**.go
             go.mod
             go.sum
@@ -106,6 +106,16 @@ jobs:
         run: |
           make test-sim-import-export
         if: env.GIT_DIFF || startsWith(github.ref, 'refs/heads/release/')
+      - name: Print simulation logs on failure
+        if: failure()
+        shell: bash
+        run: |
+          for log in /tmp/sim-logs-*/*.stdout /tmp/sim-logs-*/*.stderr; do
+            [ -f "$log" ] || continue
+            echo "::group::$log"
+            tail -n 400 "$log"
+            echo "::endgroup::"
+          done
 
   test-sim-after-import:
     runs-on: ubuntu-latest
@@ -120,7 +130,7 @@ jobs:
         run: go version
       - uses: technote-space/get-diff-action@v6
         with:
-          SUFFIX_FILTER: |
+          PATTERNS: |
             **/**.go
             go.mod
             go.sum
@@ -135,6 +145,16 @@ jobs:
         run: |
           make test-sim-after-import
         if: env.GIT_DIFF || startsWith(github.ref, 'refs/heads/release/')
+      - name: Print simulation logs on failure
+        if: failure()
+        shell: bash
+        run: |
+          for log in /tmp/sim-logs-*/*.stdout /tmp/sim-logs-*/*.stderr; do
+            [ -f "$log" ] || continue
+            echo "::group::$log"
+            tail -n 400 "$log"
+            echo "::endgroup::"
+          done
 
   test-sim-multi-seed-short:
     runs-on: ubuntu-latest
@@ -149,7 +169,7 @@ jobs:
         run: go version
       - uses: technote-space/get-diff-action@v6
         with:
-          SUFFIX_FILTER: |
+          PATTERNS: |
             **/**.go
             go.mod
             go.sum
@@ -164,6 +184,16 @@ jobs:
         run: |
           make test-sim-multi-seed-short
         if: env.GIT_DIFF || startsWith(github.ref, 'refs/heads/release/')
+      - name: Print simulation logs on failure
+        if: failure()
+        shell: bash
+        run: |
+          for log in /tmp/sim-logs-*/*.stdout /tmp/sim-logs-*/*.stderr; do
+            [ -f "$log" ] || continue
+            echo "::group::$log"
+            tail -n 400 "$log"
+            echo "::endgroup::"
+          done
 
 
 

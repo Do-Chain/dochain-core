@@ -27,19 +27,20 @@ type TaxCapQueryResponse struct {
 // StargateQuerier dispatches whitelisted stargate queries
 func StargateQuerier(queryRouter baseapp.GRPCQueryRouter, cdc codec.Codec) func(ctx sdk.Context, request *wasmvmtypes.StargateQuery) ([]byte, error) {
 	return func(ctx sdk.Context, request *wasmvmtypes.StargateQuery) ([]byte, error) {
-		protoResponseType, err := GetWhitelistedQuery(request.Path)
+		queryPath := canonicalStargateQueryPath(request.Path)
+		protoResponseType, err := GetWhitelistedQuery(queryPath)
 		if err != nil {
 			return nil, err
 		}
 
-		route := queryRouter.Route(request.Path)
+		route := queryRouter.Route(queryPath)
 		if route == nil {
-			return nil, wasmvmtypes.UnsupportedRequest{Kind: fmt.Sprintf("No route to query '%s'", request.Path)}
+			return nil, wasmvmtypes.UnsupportedRequest{Kind: fmt.Sprintf("No route to query '%s'", queryPath)}
 		}
 
 		res, err := route(ctx, &abci.RequestQuery{
 			Data: request.Data,
-			Path: request.Path,
+			Path: queryPath,
 		})
 		if err != nil {
 			return nil, err
@@ -192,9 +193,3 @@ func CustomQuerier(qp *QueryPlugin) func(ctx sdk.Context, request json.RawMessag
 		}
 	}
 }
-
-
-
-
-
-

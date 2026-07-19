@@ -18,6 +18,16 @@ import (
 // thread safe sync.Map.
 var stargateWhitelist sync.Map
 
+// legacyStargateQueryAliases retains wire-compatible Terra query paths used by
+// contracts deployed before the Do protobuf namespace was introduced. The
+// aliases resolve only to queries that are already in the Do allowlist.
+var legacyStargateQueryAliases = map[string]string{
+	"/terra.market.v1beta1.Query/Swap":         "/do.market.v1beta1.Query/Swap",
+	"/terra.oracle.v1beta1.Query/ExchangeRate": "/do.oracle.v1beta1.Query/ExchangeRate",
+	"/terra.treasury.v1beta1.Query/TaxCap":     "/do.treasury.v1beta1.Query/TaxCap",
+	"/terra.treasury.v1beta1.Query/TaxRate":    "/do.treasury.v1beta1.Query/TaxRate",
+}
+
 func init() {
 	// market
 	setWhitelistedQuery("/do.market.v1beta1.Query/Swap", &markettypes.QuerySwapResponse{})
@@ -33,6 +43,7 @@ func init() {
 // GetWhitelistedQuery returns the whitelisted query at the provided path.
 // If the query does not exist, or it was setup wrong by the chain, this returns an error.
 func GetWhitelistedQuery(queryPath string) (codec.ProtoMarshaler, error) {
+	queryPath = canonicalStargateQueryPath(queryPath)
 	protoResponseAny, isWhitelisted := stargateWhitelist.Load(queryPath)
 	if !isWhitelisted {
 		return nil, wasmvmtypes.UnsupportedRequest{Kind: fmt.Sprintf("'%s' path is not allowed from the contract", queryPath)}
@@ -44,12 +55,13 @@ func GetWhitelistedQuery(queryPath string) (codec.ProtoMarshaler, error) {
 	return protoResponseType, nil
 }
 
+func canonicalStargateQueryPath(queryPath string) string {
+	if canonicalPath, ok := legacyStargateQueryAliases[queryPath]; ok {
+		return canonicalPath
+	}
+	return queryPath
+}
+
 func setWhitelistedQuery(queryPath string, protoType codec.ProtoMarshaler) {
 	stargateWhitelist.Store(queryPath, protoType)
 }
-
-
-
-
-
-

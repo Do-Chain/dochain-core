@@ -89,7 +89,8 @@ ENV GOOS=$GOOS \
 # Copy the remaining files
 COPY ${source} .
 
-# Build app binary
+# Build only the historical node executable. Obsolete helper packages in the
+# pinned source are not part of the v1.0.1-rc6 binary and no longer compile.
 RUN --mount=type=cache,target=/root/.cache/go-build \
     --mount=type=cache,target=/root/go/pkg/mod \
     go install \
@@ -105,7 +106,7 @@ RUN --mount=type=cache,target=/root/.cache/go-build \
             -X github.com/cosmos/cosmos-sdk/version.BuildTags='netgo,muslc' \
         " \
         -trimpath \
-        ./...
+        ./cmd/dochaind
 
 ################################################################################
 

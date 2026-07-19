@@ -7,17 +7,15 @@ import (
 	"strings"
 
 	"cosmossdk.io/math"
+	appparams "github.com/Daviddochain/dochain-core/v4/app/params"
 	core "github.com/Daviddochain/dochain-core/v4/types"
 	"github.com/Daviddochain/dochain-core/v4/x/oracle/keeper"
 	"github.com/Daviddochain/dochain-core/v4/x/oracle/types"
 	"github.com/cosmos/cosmos-sdk/baseapp"
 	"github.com/cosmos/cosmos-sdk/codec"
-	codectypes "github.com/cosmos/cosmos-sdk/codec/types"
-	"github.com/cosmos/cosmos-sdk/std"
 	simtestutil "github.com/cosmos/cosmos-sdk/testutil/sims"
 	sdk "github.com/cosmos/cosmos-sdk/types"
 	simtypes "github.com/cosmos/cosmos-sdk/types/simulation"
-	"github.com/cosmos/cosmos-sdk/x/auth/tx"
 	banksim "github.com/cosmos/cosmos-sdk/x/bank/simulation"
 	distrsim "github.com/cosmos/cosmos-sdk/x/distribution/simulation"
 	"github.com/cosmos/cosmos-sdk/x/simulation"
@@ -122,10 +120,7 @@ func SimulateMsgAggregateDoRatePrevote(ak types.AccountKeeper, bk types.BankKeep
 
 		msg := types.NewMsgAggregateDoRatePrevote(voteHash, feederAddr, address)
 
-		// Build a TxConfig without depending on simapp.
-		ir := codectypes.NewInterfaceRegistry()
-		std.RegisterInterfaces(ir)
-		txGen := tx.NewTxConfig(codec.NewProtoCodec(ir), tx.DefaultSignModes)
+		txGen := appparams.MakeSimulationTxConfig()
 		tx, err := simtestutil.GenSignedMockTx(
 			r,
 			txGen,
@@ -195,9 +190,7 @@ func SimulateMsgAggregateDoRateVote(ak types.AccountKeeper, bk types.BankKeeper,
 
 		msg := types.NewMsgAggregateDoRateVote(salt, exchangeRatesStr, feederAddr, address)
 
-		ir := codectypes.NewInterfaceRegistry()
-		std.RegisterInterfaces(ir)
-		txGen := tx.NewTxConfig(codec.NewProtoCodec(ir), tx.DefaultSignModes)
+		txGen := appparams.MakeSimulationTxConfig()
 		tx, err := simtestutil.GenSignedMockTx(
 			r,
 			txGen,
@@ -253,9 +246,7 @@ func SimulateMsgDelegateFeedConsent(ak types.AccountKeeper, bk types.BankKeeper,
 
 		msg := types.NewMsgDelegateFeedConsent(valAddress, delegateAccount.Address)
 
-		ir := codectypes.NewInterfaceRegistry()
-		std.RegisterInterfaces(ir)
-		txGen := tx.NewTxConfig(codec.NewProtoCodec(ir), tx.DefaultSignModes)
+		txGen := appparams.MakeSimulationTxConfig()
 		tx, err := simtestutil.GenSignedMockTx(
 			r,
 			txGen,
