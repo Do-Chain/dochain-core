@@ -14,16 +14,21 @@ import (
 	wasmkeeper "github.com/CosmWasm/wasmd/x/wasm/keeper"
 	wasmtypes "github.com/CosmWasm/wasmd/x/wasm/types"
 	doapp "github.com/Daviddochain/dochain-core/v4/app"
+	appparams "github.com/Daviddochain/dochain-core/v4/app/params"
 	apptesting "github.com/Daviddochain/dochain-core/v4/app/testing"
 	abci "github.com/cometbft/cometbft/abci/types"
 	cmtproto "github.com/cometbft/cometbft/proto/tendermint/types"
 	dbm "github.com/cosmos/cosmos-db"
 	"github.com/cosmos/cosmos-sdk/baseapp"
 	"github.com/cosmos/cosmos-sdk/client/flags"
+	"github.com/cosmos/cosmos-sdk/codec"
 	"github.com/cosmos/cosmos-sdk/server"
 	simtestutil "github.com/cosmos/cosmos-sdk/testutil/sims"
+	sdk "github.com/cosmos/cosmos-sdk/types"
 	simtypes "github.com/cosmos/cosmos-sdk/types/simulation"
 	authzkeeper "github.com/cosmos/cosmos-sdk/x/authz/keeper"
+	banktypes "github.com/cosmos/cosmos-sdk/x/bank/types"
+	minttypes "github.com/cosmos/cosmos-sdk/x/mint/types"
 	"github.com/cosmos/cosmos-sdk/x/simulation"
 	simcli "github.com/cosmos/cosmos-sdk/x/simulation/client/cli"
 	slashingtypes "github.com/cosmos/cosmos-sdk/x/slashing/types"
@@ -119,7 +124,7 @@ func runSimulation(
 		t,
 		os.Stdout,
 		app.BaseApp,
-		simtestutil.AppStateFn(app.AppCodec(), app.SimulationManager(), app.DefaultGenesis()),
+		simulationAppStateFn(app),
 		simtypes.RandomAccounts,
 		simtestutil.SimulationOperations(app, app.AppCodec(), config),
 		app.ModuleAccountAddrs(),
@@ -128,6 +133,97 @@ func runSimulation(
 	)
 
 	return stopEarly, simParams, err
+}
+
+func simulationAppStateFn(app *doapp.DoApp) simtypes.AppStateFn {
+	return simtestutil.AppStateFnWithExtendedCb(
+		app.AppCodec(),
+		app.SimulationManager(),
+		app.DefaultGenesis(),
+		func(rawState map[string]json.RawMessage) {
+			normalizeSimulationGenesisDenoms(app.AppCodec(), rawState)
+		},
+	)
+}
+
+func normalizeSimulationGenesisDenoms(cdc codec.JSONCodec, rawState map[string]json.RawMessage) {
+	stakingStateBz, ok := rawState[stakingtypes.ModuleName]
+	if !ok {
+		panic("staking genesis state is missing")
+	}
+	stakingState := new(stakingtypes.GenesisState)
+	cdc.MustUnmarshalJSON(stakingStateBz, stakingState)
+	stakingState.Params.BondDenom = appparams.BondDenom
+	rawState[stakingtypes.ModuleName] = cdc.MustMarshalJSON(stakingState)
+
+	bankStateBz, ok := rawState[banktypes.ModuleName]
+	if !ok {
+		panic("bank genesis state is missing")
+	}
+	bankState := new(banktypes.GenesisState)
+	cdc.MustUnmarshalJSON(bankStateBz, bankState)
+	bankState.Supply = normalizeSimulationCoins(bankState.Supply)
+	for i := range bankState.Balances {
+		bankState.Balances[i].Coins = normalizeSimulationCoins(bankState.Balances[i].Coins)
+	}
+	for i := range bankState.SendEnabled {
+		if bankState.SendEnabled[i].Denom == sdk.DefaultBondDenom {
+			bankState.SendEnabled[i].Denom = appparams.BondDenom
+		}
+	}
+	rawState[banktypes.ModuleName] = cdc.MustMarshalJSON(bankState)
+
+	mintStateBz, ok := rawState[minttypes.ModuleName]
+	if !ok {
+		panic("mint genesis state is missing")
+	}
+	mintState := new(minttypes.GenesisState)
+	cdc.MustUnmarshalJSON(mintStateBz, mintState)
+	mintState.Params.MintDenom = appparams.BondDenom
+	rawState[minttypes.ModuleName] = cdc.MustMarshalJSON(mintState)
+}
+
+func normalizeSimulationCoins(coins sdk.Coins) sdk.Coins {
+	normalized := sdk.NewCoins()
+	for _, coin := range coins {
+		if coin.Denom == sdk.DefaultBondDenom {
+			coin.Denom = appparams.BondDenom
+		}
+		normalized = normalized.Add(coin)
+	}
+	return normalized
+}
+
+func TestNormalizeSimulationGenesisDenoms(t *testing.T) {
+	c := doapp.MakeEncodingConfig().Marshaler
+	bankState := banktypes.DefaultGenesisState()
+	bankState.Balances = []banktypes.Balance{{
+		Address: "simulation-account",
+		Coins: sdk.NewCoins(
+			sdk.NewInt64Coin(sdk.DefaultBondDenom, 7),
+			sdk.NewInt64Coin(appparams.BondDenom, 3),
+		),
+	}}
+	bankState.Supply = bankState.Balances[0].Coins
+	bankState.SendEnabled = []banktypes.SendEnabled{{Denom: sdk.DefaultBondDenom, Enabled: true}}
+	stakingState := stakingtypes.DefaultGenesisState()
+	mintState := minttypes.DefaultGenesisState()
+	rawState := map[string]json.RawMessage{
+		banktypes.ModuleName:    c.MustMarshalJSON(bankState),
+		stakingtypes.ModuleName: c.MustMarshalJSON(stakingState),
+		minttypes.ModuleName:    c.MustMarshalJSON(mintState),
+	}
+
+	normalizeSimulationGenesisDenoms(c, rawState)
+
+	c.MustUnmarshalJSON(rawState[banktypes.ModuleName], bankState)
+	c.MustUnmarshalJSON(rawState[stakingtypes.ModuleName], stakingState)
+	c.MustUnmarshalJSON(rawState[minttypes.ModuleName], mintState)
+	require.Equal(t, sdk.NewCoins(sdk.NewInt64Coin(appparams.BondDenom, 10)), bankState.Supply)
+	require.Equal(t, bankState.Supply, bankState.Balances[0].Coins)
+	require.Equal(t, appparams.BondDenom, bankState.SendEnabled[0].Denom)
+	require.Equal(t, appparams.BondDenom, stakingState.Params.BondDenom)
+	require.Equal(t, appparams.BondDenom, mintState.Params.MintDenom)
 }
 
 func TestFullAppSimulation(t *testing.T) {

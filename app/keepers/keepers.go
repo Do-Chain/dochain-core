@@ -110,6 +110,21 @@ type AppKeepers struct {
 	TransferStack         ibctransfer.IBCModule
 }
 
+const (
+	doWasmCapability          = "do"
+	legacyTerraWasmCapability = "terra"
+)
+
+// wasmCapabilities preserves the legacy Terra capability alongside Do so
+// contracts built against either generation of the custom bindings validate.
+func wasmCapabilities() []string {
+	return append(
+		wasmkeeper.BuiltInCapabilities(),
+		doWasmCapability,
+		legacyTerraWasmCapability,
+	)
+}
+
 func NewAppKeepers(
 	appCodec codec.Codec,
 	bApp *baseapp.BaseApp,
@@ -438,17 +453,17 @@ func NewAppKeepers(
 		appKeepers.AccountKeeper,
 		appKeepers.BankKeeper,
 		appKeepers.StakingKeeper,
-		distrkeeper.NewQuerier(appKeepers.DistrKeeper),           // DistributionKeeper
-		appKeepers.IBCHooksWrapper,                               // ICS4Wrapper (hooks)
-		appKeepers.IBCKeeper.ChannelKeeper,                       // ChannelKeeper
-		appKeepers.IBCKeeper.ChannelKeeperV2,                     // ChannelKeeperV2
-		appKeepers.TransferKeeper,                                // ICS20TransferPortSource
-		bApp.MsgServiceRouter(),                                  // MessageRouter
-		bApp.GRPCQueryRouter(),                                   // GRPCQueryRouter
-		wasmDir,                                                  // homeDir
-		wasmNodeConfig,                                           // NodeConfig
-		wasmVMConfig,                                             // VMConfig
-		append(wasmkeeper.BuiltInCapabilities(), "do"),           // availableCapabilities
+		distrkeeper.NewQuerier(appKeepers.DistrKeeper), // DistributionKeeper
+		appKeepers.IBCHooksWrapper,                     // ICS4Wrapper (hooks)
+		appKeepers.IBCKeeper.ChannelKeeper,             // ChannelKeeper
+		appKeepers.IBCKeeper.ChannelKeeperV2,           // ChannelKeeperV2
+		appKeepers.TransferKeeper,                      // ICS20TransferPortSource
+		bApp.MsgServiceRouter(),                        // MessageRouter
+		bApp.GRPCQueryRouter(),                         // GRPCQueryRouter
+		wasmDir,                                        // homeDir
+		wasmNodeConfig,                                 // NodeConfig
+		wasmVMConfig,                                   // VMConfig
+		wasmCapabilities(),                             // availableCapabilities
 		authtypes.NewModuleAddress(govtypes.ModuleName).String(), // authority
 		wasmOpts..., // Options
 	)
