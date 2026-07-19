@@ -234,4 +234,3 @@ func (app *DoApp) prepForZeroHeightGenesis(ctx sdk.Context, jailAllowedAddrs []s
 
 
 
-

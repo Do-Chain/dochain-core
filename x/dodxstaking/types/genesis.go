@@ -18,6 +18,7 @@ func DefaultGenesisState() *GenesisState {
 // ValidateGenesis validates x/dodxstaking genesis state.
 func ValidateGenesis(data *GenesisState) error {
 	seen := map[string]bool{}
+	rewardDenoms := map[string]bool{}
 
 	for _, stake := range data.Stakes {
 		addr, err := sdk.AccAddressFromBech32(stake.Address)
@@ -50,6 +51,21 @@ func ValidateGenesis(data *GenesisState) error {
 	}
 	if err := validateAccountRewardAmountRecords(data.PendingRewards, "pending reward"); err != nil {
 		return err
+	}
+	for _, record := range data.RewardAccumulators {
+		rewardDenoms[record.Denom] = true
+	}
+	for _, record := range data.RewardPools {
+		rewardDenoms[record.Denom] = true
+	}
+	for _, record := range data.RewardDebts {
+		rewardDenoms[record.Denom] = true
+	}
+	for _, record := range data.PendingRewards {
+		rewardDenoms[record.Denom] = true
+	}
+	if len(rewardDenoms) > MaxRewardDenoms {
+		return fmt.Errorf("too many reward denoms: %d > %d", len(rewardDenoms), MaxRewardDenoms)
 	}
 
 	return nil

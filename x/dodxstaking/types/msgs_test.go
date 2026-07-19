@@ -105,6 +105,11 @@ func TestMsgDepositRewardsValidateBasic(t *testing.T) {
 			err:  ErrInvalidRewardAmount,
 		},
 		{
+			name: "unsupported public reward denom",
+			msg:  NewMsgDepositRewards(addr, sdk.NewCoins(sdk.NewCoin("uattack", sdkmath.OneInt()))),
+			err:  ErrInvalidRewardDenom,
+		},
+		{
 			name: "bad denom",
 			msg: &MsgDepositRewards{
 				Depositor: addr.String(),

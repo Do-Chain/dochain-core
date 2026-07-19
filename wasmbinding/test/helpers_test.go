@@ -16,6 +16,9 @@ type WasmTestSuite struct {
 }
 
 func TestWasmTestSuite(t *testing.T) {
+	if !apptesting.WasmVMAvailable {
+		t.Skip("Wasm binding tests require a CGO-enabled WasmVM build")
+	}
 	suite.Run(t, new(WasmTestSuite))
 }
 
@@ -58,9 +61,3 @@ func (s *WasmTestSuite) instantiateContract(funder sdk.AccAddress, codeID uint64
 
 	return addr
 }
-
-
-
-
-
-

@@ -1,7 +1,7 @@
 swagger: '2.0'
 info:
   title: Do-Chain - gRPC Gateway docs
-  description: REST interface for Do-Chain https://github.com/Daviddochain/dochain-core
+  description: REST interface for Do-Chain https://github.com/Do-Chain/dochain-core
   version: 2.2.1
 paths:
   /cosmos/auth/v1beta1/account_info/{address}:
@@ -16258,9 +16258,7 @@ paths:
                 type: object
                 properties:
                   mint_denom:
-        type: string
-                  mint_denom:
-        type: string
+                    type: string
                     title: type of coin to mint
                   inflation_rate_change:
                     type: string
@@ -19807,9 +19805,7 @@ paths:
                       historical_entries is the number of historical entries to
                       persist.
                   bond_denom:
-        type: string
-                  bond_denom:
-        type: string
+                    type: string
                     description: bond_denom defines the bondable coin denomination.
                   min_commission_rate:
                     type: string
@@ -54442,8 +54438,6 @@ definitions:
     properties:
       mint_denom:
         type: string
-      mint_denom:
-        type: string
         title: type of coin to mint
       inflation_rate_change:
         type: string
@@ -54490,9 +54484,7 @@ definitions:
         type: object
         properties:
           mint_denom:
-        type: string
-          mint_denom:
-        type: string
+            type: string
             title: type of coin to mint
           inflation_rate_change:
             type: string
@@ -55368,8 +55360,6 @@ definitions:
         type: integer
         format: int64
         description: historical_entries is the number of historical entries to persist.
-      bond_denom:
-        type: string
       bond_denom:
         type: string
         description: bond_denom defines the bondable coin denomination.
@@ -56704,9 +56694,7 @@ definitions:
             format: int64
             description: historical_entries is the number of historical entries to persist.
           bond_denom:
-        type: string
-          bond_denom:
-        type: string
+            type: string
             description: bond_denom defines the bondable coin denomination.
           min_commission_rate:
             type: string

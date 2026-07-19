@@ -2,7 +2,7 @@
   "swagger": "2.0",
   "info": {
     "title": "Do-Chain - gRPC Gateway docs",
-    "description": "REST interface for Do-Chain https://github.com/Daviddochain/dochain-core",
+    "description": "REST interface for Do-Chain https://github.com/Do-Chain/dochain-core",
     "version": "2.2.1"
   },
   "apis": [

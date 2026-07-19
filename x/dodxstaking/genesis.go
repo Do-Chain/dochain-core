@@ -10,6 +10,25 @@ import (
 
 // InitGenesis initializes x/dodxstaking state.
 func InitGenesis(ctx sdk.Context, k keeper.Keeper, data *types.GenesisState) {
+	registerRewardDenoms := func(records []types.RewardAmountRecord) {
+		for _, record := range records {
+			if err := k.RegisterRewardDenom(ctx, record.Denom); err != nil {
+				panic(err)
+			}
+		}
+	}
+	registerAccountRewardDenoms := func(records []types.AccountRewardAmountRecord) {
+		for _, record := range records {
+			if err := k.RegisterRewardDenom(ctx, record.Denom); err != nil {
+				panic(err)
+			}
+		}
+	}
+	registerRewardDenoms(data.RewardAccumulators)
+	registerRewardDenoms(data.RewardPools)
+	registerAccountRewardDenoms(data.RewardDebts)
+	registerAccountRewardDenoms(data.PendingRewards)
+
 	for _, stake := range data.Stakes {
 		addr, err := sdk.AccAddressFromBech32(stake.Address)
 		if err != nil {

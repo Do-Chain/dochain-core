@@ -76,6 +76,9 @@ func TestUpdateRewardWeight(t *testing.T) {
 
 func TestUpdateTaxCap(t *testing.T) {
 	input := CreateTestInput(t)
+	params := input.TreasuryKeeper.GetParams(input.Ctx)
+	params.TaxPolicy.Cap = sdk.NewCoin(core.MicroSDRDenom, params.TaxPolicy.Cap.Amount)
+	input.TreasuryKeeper.SetParams(input.Ctx, params)
 	input.OracleKeeper.SetWhitelist(
 		input.Ctx,
 		oracletypes.DenomList{
@@ -100,11 +103,5 @@ func TestUpdateTaxCap(t *testing.T) {
 
 	krwCap := input.TreasuryKeeper.GetTaxCap(input.Ctx, core.MicroKRWDenom)
 	sdrCapAmt := input.TreasuryKeeper.GetParams(input.Ctx).TaxPolicy.Cap.Amount
-	require.Equal(t, krwCap, krwPrice.Quo(sdrPrice).MulInt(sdrCapAmt).TruncateInt())
+	require.Equal(t, krwPrice.Quo(sdrPrice).MulInt(sdrCapAmt).TruncateInt(), krwCap)
 }
-
-
-
-
-
-

@@ -39,7 +39,7 @@ func MigrateGenesisCmd() *cobra.Command {
 		Long: `Migrate the source genesis into the target version and print to STDOUT.
 
 Example:
-$ dochaind migrate /path/to/genesis.json --chain-id=dochain-1 --genesis-time=2019-04-22T17:00:00Z --initial-height=5000
+$ dochaind migrate /path/to/genesis.json --chain-id=Do-Chain --genesis-time=2019-04-22T17:00:00Z --initial-height=5000
 `,
 		Args: cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {

@@ -119,18 +119,6 @@ func (n *NodeConfig) QueryTaxRate() (sdkmath.LegacyDec, error) {
 	return taxRateResp.TaxRate, nil
 }
 
-func (n *NodeConfig) QueryBurnTaxRate() (sdkmath.LegacyDec, error) {
-	path := "do/tax/v1beta1/burn_tax_rate"
-	bz, err := n.QueryGRPCGateway(path)
-	require.NoError(n.t, err)
-
-	var taxRateResp taxtypes.QueryBurnTaxRateResponse
-	if err := util.Cdc.UnmarshalJSON(bz, &taxRateResp); err != nil {
-		return sdkmath.LegacyZeroDec(), err
-	}
-	return taxRateResp.TaxRate, nil
-}
-
 func (n *NodeConfig) QueryBurnTaxExemptionList() ([]string, error) {
 	path := "do/treasury/v1beta1/burn_tax_exemption_list"
 	bz, err := n.QueryGRPCGateway(path)
@@ -174,39 +162,6 @@ func (n *NodeConfig) QueryFeederDelegation(validatorAddr string) (string, error)
 		return "", err
 	}
 	return resp.FeederAddr, nil
-}
-
-// QueryTaxExemptionZones returns the list of tax exemption zones.
-func (n *NodeConfig) QueryTaxExemptionZones() ([]taxexemptiontypes.Zone, error) {
-	path := "do/taxexemption/v1/zones"
-	bz, err := n.QueryGRPCGateway(path)
-	require.NoError(n.t, err)
-
-	var resp taxexemptiontypes.QueryTaxExemptionZonesResponse
-	if err := util.Cdc.UnmarshalJSON(bz, &resp); err != nil {
-		return nil, err
-	}
-
-	zones := make([]taxexemptiontypes.Zone, 0, len(resp.Zones))
-	for _, z := range resp.Zones {
-		if z != nil {
-			zones = append(zones, *z)
-		}
-	}
-	return zones, nil
-}
-
-// QueryTaxExemptionAddresses returns the addresses for a given zone.
-func (n *NodeConfig) QueryTaxExemptionAddresses(zone string) ([]string, error) {
-	path := fmt.Sprintf("do/taxexemption/v1/%s/addresses", zone)
-	bz, err := n.QueryGRPCGateway(path)
-	require.NoError(n.t, err)
-
-	var resp taxexemptiontypes.QueryTaxExemptionAddressResponse
-	if err := util.Cdc.UnmarshalJSON(bz, &resp); err != nil {
-		return nil, err
-	}
-	return resp.Addresses, nil
 }
 
 func (n *NodeConfig) QueryContractsFromID(codeID int) ([]string, error) {
@@ -315,10 +270,3 @@ func (n *NodeConfig) QueryListSnapshots() ([]*tmabcitypes.Snapshot, error) {
 
 	return listSnapshots.Snapshots, nil
 }
-
-
-
-
-
-
-

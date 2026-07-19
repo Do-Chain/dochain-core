@@ -73,12 +73,6 @@ func (s *KeeperTestHelper) Setup(_ *testing.T, chainID string) {
 
 	s.App.MintKeeper.Params.Set(s.Ctx, minttypes.DefaultParams())
 
-	// Set gas price to 0 in tax params
-	taxParams := taxtypes.DefaultParams()
-	taxParams.GasPrices = sdk.NewDecCoins(sdk.NewDecCoin(core.MicroSDRDenom, sdkmath.ZeroInt()))
-	if err := s.App.TaxKeeper.SetParams(s.Ctx, taxParams); err != nil {
-		panic(err)
-	}
 	s.App.MintKeeper.Minter.Set(s.Ctx, minttypes.DefaultInitialMinter())
 	// Distribution params must be explicitly set in tests, or else queries fail
 	// due to collections-based param store requiring explicit initialization
@@ -342,11 +336,6 @@ func genesisStateWithValSet(t *testing.T,
 	treasuryGensis := treasurytypes.DefaultGenesisState()
 	genesisState[treasurytypes.ModuleName] = app.AppCodec().MustMarshalJSON(treasuryGensis)
 
-	// tax genesis state; keep gas price zero to match many legacy tests
-	taxGenesis := taxtypes.DefaultGenesisState()
-	taxGenesis.Params.GasPrices = sdk.NewDecCoins(sdk.NewDecCoin(core.MicroSDRDenom, sdkmath.ZeroInt()))
-	genesisState[taxtypes.ModuleName] = app.AppCodec().MustMarshalJSON(taxGenesis)
-
 	// ensure wasm genesis state present with default params
 	wasmGenesis := &wasmtypes.GenesisState{Params: wasmtypes.DefaultParams()}
 	genesisState[wasmtypes.ModuleName] = app.AppCodec().MustMarshalJSON(wasmGenesis)
@@ -391,12 +380,3 @@ func (s *KeeperTestHelper) NextBlock() {
 	s.Ctx = s.App.NewUncachedContext(false, hdr)
 	s.CheckCtx = s.App.NewUncachedContext(true, hdr)
 }
-
-
-
-
-
-
-
-
-

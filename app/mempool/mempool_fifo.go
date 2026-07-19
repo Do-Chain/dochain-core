@@ -66,8 +66,8 @@ func FifoMaxTxOpt(maxTx int) FifoMempoolOptions {
 }
 
 func (mp *FifoMempool) Insert(_ context.Context, tx sdk.Tx) error {
-	mp.mtx.RLock()
-	defer mp.mtx.RUnlock()
+	mp.mtx.Lock()
+	defer mp.mtx.Unlock()
 	totalTxs := mp.txs.Len() + mp.txsOracle.Len()
 	if mp.maxTx >= 0 && totalTxs >= mp.maxTx {
 		return mempool.ErrMempoolTxMaxCapacity
@@ -79,6 +79,12 @@ func (mp *FifoMempool) Insert(_ context.Context, tx sdk.Tx) error {
 	txKey, err := getTxKey(tx)
 	if err != nil {
 		return err
+	}
+	if _, exists := mp.txsMap.Load(txKey); exists {
+		return fmt.Errorf("transaction already exists in mempool")
+	}
+	if _, exists := mp.txsMapOracle.Load(txKey); exists {
+		return fmt.Errorf("transaction already exists in mempool")
 	}
 	// Add to appropriate queue based on transaction type
 	if helper.IsOracleTx(tx.GetMsgs()) {
@@ -95,72 +101,49 @@ func (mp *FifoMempool) Insert(_ context.Context, tx sdk.Tx) error {
 func (mp *FifoMempool) Select(_ context.Context, _ [][]byte) mempool.Iterator {
 	mp.mtx.RLock()
 	defer mp.mtx.RUnlock()
-	// Pre-allocate slice with exact capacity needed
+	// Return a transaction snapshot. Iterators must not retain pointers into the
+	// live queues after the lock is released because Remove may run concurrently.
 	totalTxs := mp.txsOracle.Len() + mp.txs.Len()
-	listTxKey := make([]customTxKey, 0, totalTxs)
-	var newMapTxs sync.Map
-	var newMapTxsOracle sync.Map
+	txs := make([]sdk.Tx, 0, totalTxs)
 	for e := mp.txsOracle.Front(); e != nil; e = e.Next() {
-		tx := e.Value.(sdk.Tx)
-		txKey, _ := getTxKey(tx)
-		listTxKey = append(listTxKey, txKey)
-		newMapTxsOracle.Store(txKey, e)
+		if tx, ok := e.Value.(sdk.Tx); ok {
+			txs = append(txs, tx)
+		}
 	}
 	for e := mp.txs.Front(); e != nil; e = e.Next() {
-		tx := e.Value.(sdk.Tx)
-		txKey, _ := getTxKey(tx)
-		listTxKey = append(listTxKey, txKey)
-		newMapTxs.Store(txKey, e)
+		if tx, ok := e.Value.(sdk.Tx); ok {
+			txs = append(txs, tx)
+		}
 	}
-
-	iter := &fifoIterator{
-		listTxKey:    listTxKey,
-		mapTxs:       &newMapTxs,
-		mapTxsOracle: &newMapTxsOracle,
+	if len(txs) == 0 {
+		return nil
 	}
-	return iter.Next()
+	return &fifoIterator{txs: txs}
 }
 
 type fifoIterator struct {
-	currentTx    *clist.CElement
-	listTxKey    []customTxKey
-	mapTxs       *sync.Map
-	mapTxsOracle *sync.Map
+	txs   []sdk.Tx
+	index int
 }
 
 func (it *fifoIterator) Next() mempool.Iterator {
-	// Return nil if we've processed all transactions
-	if len(it.listTxKey) == 0 {
+	it.index++
+	if it.index >= len(it.txs) {
 		return nil
 	}
-
-	// Get the next transaction key and remove it from the list
-	txKey := it.listTxKey[0]
-	it.listTxKey = it.listTxKey[1:]
-
-	// Check oracle transactions first
-	if elem, exists := it.mapTxsOracle.LoadAndDelete(txKey); exists {
-		it.currentTx = elem.(*clist.CElement)
-		return it
-	}
-
-	// Then check regular transactions
-	if elem, exists := it.mapTxs.LoadAndDelete(txKey); exists {
-		it.currentTx = elem.(*clist.CElement)
-		return it
-	}
-
-	// If transaction was already removed, continue to next one
-	return it.Next()
+	return it
 }
 
 func (it *fifoIterator) Tx() sdk.Tx {
-	return it.currentTx.Value.(sdk.Tx)
+	if it.index < 0 || it.index >= len(it.txs) {
+		return nil
+	}
+	return it.txs[it.index]
 }
 
 func (mp *FifoMempool) Remove(tx sdk.Tx) error {
-	mp.mtx.RLock()
-	defer mp.mtx.RUnlock()
+	mp.mtx.Lock()
+	defer mp.mtx.Unlock()
 	txKey, err := getTxKey(tx)
 	if err != nil {
 		return err
@@ -189,7 +172,14 @@ func (mp *FifoMempool) CountTx() int {
 }
 
 func getTxKey(tx sdk.Tx) (customTxKey, error) {
-	sigs, err := tx.(signing.SigVerifiableTx).GetSignaturesV2()
+	if tx == nil {
+		return customTxKey{}, fmt.Errorf("transaction is nil")
+	}
+	sigTx, ok := tx.(signing.SigVerifiableTx)
+	if !ok {
+		return customTxKey{}, fmt.Errorf("transaction does not expose verifiable signatures")
+	}
+	sigs, err := sigTx.GetSignaturesV2()
 	if err != nil {
 		return customTxKey{}, err
 	}
@@ -198,7 +188,13 @@ func getTxKey(tx sdk.Tx) (customTxKey, error) {
 	}
 
 	sig := sigs[0]
+	if sig.PubKey == nil {
+		return customTxKey{}, fmt.Errorf("transaction signer public key is missing")
+	}
 	sender := sdk.AccAddress(sig.PubKey.Address()).String()
+	if sender == "" {
+		return customTxKey{}, fmt.Errorf("transaction signer address is missing")
+	}
 	nonce := sig.Sequence
 	key := customTxKey{nonce: nonce, address: sender}
 	return key, nil
@@ -208,9 +204,3 @@ type customTxKey struct {
 	address string
 	nonce   uint64
 }
-
-
-
-
-
-

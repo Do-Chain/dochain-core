@@ -1,6 +1,7 @@
 package types
 
 import (
+	"fmt"
 	"testing"
 
 	sdkmath "cosmossdk.io/math"
@@ -83,4 +84,13 @@ func TestValidateGenesis(t *testing.T) {
 		},
 	}
 	require.Error(t, ValidateGenesis(duplicateAccountReward))
+
+	tooManyRewardDenoms := &GenesisState{}
+	for i := 0; i <= MaxRewardDenoms; i++ {
+		tooManyRewardDenoms.RewardPools = append(tooManyRewardDenoms.RewardPools, RewardAmountRecord{
+			Denom:  fmt.Sprintf("uasset%d", i),
+			Amount: "1",
+		})
+	}
+	require.ErrorContains(t, ValidateGenesis(tooManyRewardDenoms), "too many reward denoms")
 }

@@ -4,6 +4,8 @@ import (
 	"errors"
 	"fmt"
 	"math/rand"
+	"sync"
+	"sync/atomic"
 	"testing"
 
 	log "cosmossdk.io/log"
@@ -14,10 +16,51 @@ import (
 	sdk "github.com/cosmos/cosmos-sdk/types"
 	"github.com/cosmos/cosmos-sdk/types/mempool"
 	simtypes "github.com/cosmos/cosmos-sdk/types/simulation"
+	txsigning "github.com/cosmos/cosmos-sdk/types/tx/signing"
 	banktypes "github.com/cosmos/cosmos-sdk/x/bank/types"
 	stakingtypes "github.com/cosmos/cosmos-sdk/x/staking/types"
 	"github.com/stretchr/testify/require"
 )
+
+func (s *MempoolTestSuite) TestMalformedTransactionsAreRejected() {
+	ctx := sdk.NewContext(nil, tmproto.Header{}, false, log.NewNopLogger())
+	mp := appmempool.NewFifoMempool()
+
+	require.ErrorContains(s.T(), mp.Insert(ctx, nil), "nil")
+	require.ErrorContains(s.T(), mp.Insert(ctx, unsignedTestTx{}), "verifiable signatures")
+	require.ErrorContains(s.T(), mp.Insert(ctx, sigErrTx{getSigs: func() ([]txsigning.SignatureV2, error) {
+		return []txsigning.SignatureV2{{Sequence: 1}}, nil
+	}}), "public key")
+	require.Equal(s.T(), 0, mp.CountTx())
+}
+
+func (s *MempoolTestSuite) TestConcurrentInsertRespectsCapacity() {
+	ctx := sdk.NewContext(nil, tmproto.Header{}, false, log.NewNopLogger())
+	accounts := simtypes.RandomAccounts(rand.New(rand.NewSource(1)), 1)
+	mp := appmempool.NewFifoMempool(appmempool.FifoMaxTxOpt(10))
+
+	var accepted atomic.Int64
+	var unexpected atomic.Int64
+	var wg sync.WaitGroup
+	for i := 0; i < 100; i++ {
+		wg.Add(1)
+		go func(nonce uint64) {
+			defer wg.Done()
+			err := mp.Insert(ctx, testTx{nonce: nonce, address: accounts[0].Address})
+			if err == nil {
+				accepted.Add(1)
+				return
+			}
+			if !errors.Is(err, mempool.ErrMempoolTxMaxCapacity) {
+				unexpected.Add(1)
+			}
+		}(uint64(i))
+	}
+	wg.Wait()
+	require.Zero(s.T(), unexpected.Load())
+	require.Equal(s.T(), int64(10), accepted.Load())
+	require.Equal(s.T(), 10, mp.CountTx())
+}
 
 func (s *MempoolTestSuite) TestTxOrder() {
 	t := s.T()
@@ -660,9 +703,3 @@ func BenchmarkMempool(b *testing.B) {
 		})
 	}
 }
-
-
-
-
-
-

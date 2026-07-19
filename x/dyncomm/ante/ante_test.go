@@ -177,6 +177,9 @@ func (suite *AnteTestSuite) CreateValidator(tokens int64) (cryptotypes.PrivKey, 
 }
 
 func TestAnteTestSuite(t *testing.T) {
+	if !apptesting.WasmVMAvailable {
+		t.Skip("app integration tests require a CGO-enabled WasmVM build")
+	}
 	suite.Run(t, new(AnteTestSuite))
 }
 
@@ -426,9 +429,3 @@ func (suite *AnteTestSuite) TestAnte_EditValidatorAccountSequence() {
 		suite.Require().Equal(uint64(1), deliverSeq)
 	}
 }
-
-
-
-
-
-

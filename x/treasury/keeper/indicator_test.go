@@ -41,13 +41,11 @@ func TestSeigniorageRewardsForEpoch(t *testing.T) {
 	input, _ := setupValidators(t)
 
 	amt := sdkmath.NewInt(1000)
-	sdrRate := sdkmath.LegacyNewDec(10)
 
 	// Add seigniorage
 	input.TreasuryKeeper.RecordEpochInitialIssuance(input.Ctx)
 
 	// Set random prices
-	input.OracleKeeper.SetDoExchangeRate(input.Ctx, core.MicroSDRDenom, sdrRate)
 	input.Ctx = input.Ctx.WithBlockHeight(int64(core.BlocksPerWeek))
 
 	// Add seigniorage
@@ -60,7 +58,7 @@ func TestSeigniorageRewardsForEpoch(t *testing.T) {
 	// Get seigniorage rewards (SR)
 	SR := input.TreasuryKeeper.GetSR(input.Ctx, input.TreasuryKeeper.GetEpoch(input.Ctx))
 	miningRewardWeight := input.TreasuryKeeper.GetRewardWeight(input.Ctx)
-	require.Equal(t, sdrRate.MulInt(amt).Mul(miningRewardWeight), SR)
+	require.Equal(t, miningRewardWeight.MulInt(amt), SR)
 }
 
 func TestMiningRewardsForEpoch(t *testing.T) {
@@ -230,9 +228,3 @@ func TestRollingAverageIndicator(t *testing.T) {
 	rval = input.TreasuryKeeper.rollingAverageIndicator(input.Ctx, 1, SR)
 	require.Equal(t, sdkmath.LegacyNewDec(400), rval)
 }
-
-
-
-
-
-

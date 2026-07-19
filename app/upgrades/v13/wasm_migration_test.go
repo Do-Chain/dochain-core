@@ -1,6 +1,7 @@
 package v13_test
 
 import (
+	"bytes"
 	"testing"
 
 	sdklog "cosmossdk.io/log"
@@ -42,9 +43,9 @@ func TestComprehensiveMigrationTestSuite(t *testing.T) {
 
 func (s *ComprehensiveMigrationTestSuite) SetupTest() {
 	// Initialize test addresses
-	s.testAddr1 = sdk.MustAccAddressFromBech32("do1fex9f78reuwhfsnc8sun6mz8rl9zwqh03fhwf3")
-	s.testAddr2 = sdk.MustAccAddressFromBech32("do1k4zsjshs2ukv959mfwnrlq68rmqm8xesd9dj6l")
-	s.testAddr3 = sdk.MustAccAddressFromBech32("do1cf3dvu8jxaam2v92032exeuqe3ch5t8u72uzp0")
+	s.testAddr1 = sdk.AccAddress(bytes.Repeat([]byte{1}, 20))
+	s.testAddr2 = sdk.AccAddress(bytes.Repeat([]byte{2}, 20))
+	s.testAddr3 = sdk.AccAddress(bytes.Repeat([]byte{3}, 20))
 
 	// Setup common store infrastructure
 	s.setupStore()
@@ -359,9 +360,3 @@ func (s *ComprehensiveMigrationTestSuite) verifyLegacyDataRemoved() {
 
 	s.Require().Nil(s.kvStore.Get(v13.LegacyPrefixes.ParamsKey))
 }
-
-
-
-
-
-

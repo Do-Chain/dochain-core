@@ -32,6 +32,7 @@ import (
 	v15_1 "github.com/Daviddochain/dochain-core/v4/app/upgrades/v15_1"
 	v16 "github.com/Daviddochain/dochain-core/v4/app/upgrades/v16"
 	v17 "github.com/Daviddochain/dochain-core/v4/app/upgrades/v17"
+	v18 "github.com/Daviddochain/dochain-core/v4/app/upgrades/v18"
 	v2 "github.com/Daviddochain/dochain-core/v4/app/upgrades/v2"
 	v3 "github.com/Daviddochain/dochain-core/v4/app/upgrades/v3"
 	v4 "github.com/Daviddochain/dochain-core/v4/app/upgrades/v4"
@@ -83,6 +84,7 @@ const (
 	appName                  = "DoApp"
 	manualV16UpgradeFilename = "manual-v16-upgrade.json"
 	manualV17UpgradeFilename = "manual-v17-upgrade.json"
+	manualV18UpgradeFilename = "manual-v18-upgrade.json"
 )
 
 var (
@@ -113,6 +115,7 @@ var (
 		v14_1.Upgrade,
 		v16.Upgrade,
 		v17.Upgrade,
+		v18.Upgrade,
 	}
 
 	// Forks defines forks to be applied to the network
@@ -144,6 +147,7 @@ type DoApp struct {
 
 	manualV16UpgradePlan upgradetypes.Plan
 	manualV17UpgradePlan upgradetypes.Plan
+	manualV18UpgradePlan upgradetypes.Plan
 
 	// the module manager
 	mm *module.Manager
@@ -412,6 +416,9 @@ func (app *DoApp) PreBlocker(ctx sdk.Context, _ *abci.RequestFinalizeBlock) (*sd
 	if err := app.applyManualV17Upgrade(ctx); err != nil {
 		return nil, err
 	}
+	if err := app.applyManualV18Upgrade(ctx); err != nil {
+		return nil, err
+	}
 	return resp, nil
 }
 
@@ -548,7 +555,16 @@ func RegisterSwaggerAPI(rtr *mux.Router) {
 	}
 
 	staticServer := http.FileServer(statikFS)
-	rtr.PathPrefix("/swagger/").Handler(http.StripPrefix("/swagger/", staticServer))
+	swaggerHandler := http.StripPrefix("/swagger/", staticServer)
+	rtr.PathPrefix("/swagger/").Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		// statik uses a fixed modification time for reproducible assets. Disable
+		// browser caching so a node upgrade cannot leave an older API definition
+		// cached indefinitely.
+		w.Header().Set("Cache-Control", "no-cache, no-store, must-revalidate")
+		w.Header().Set("Pragma", "no-cache")
+		w.Header().Set("Expires", "0")
+		swaggerHandler.ServeHTTP(w, r)
+	}))
 }
 
 // GetMaccPerms returns a copy of the module account permissions
@@ -596,6 +612,10 @@ func (app *DoApp) applyManualV17Upgrade(ctx sdk.Context) error {
 	return app.applyManualUpgrade(ctx, app.manualV17UpgradePlan)
 }
 
+func (app *DoApp) applyManualV18Upgrade(ctx sdk.Context) error {
+	return app.applyManualUpgrade(ctx, app.manualV18UpgradePlan)
+}
+
 func (app *DoApp) applyManualUpgrade(ctx sdk.Context, plan upgradetypes.Plan) error {
 	if plan.Name == "" || ctx.BlockHeight() != plan.Height {
 		return nil
@@ -621,6 +641,7 @@ func (app *DoApp) readManualUpgradePlans() (upgradetypes.Plan, bool, error) {
 	}{
 		{manualV16UpgradeFilename, v16.UpgradeName, &app.manualV16UpgradePlan},
 		{manualV17UpgradeFilename, v17.UpgradeName, &app.manualV17UpgradePlan},
+		{manualV18UpgradeFilename, v18.UpgradeName, &app.manualV18UpgradePlan},
 	}
 
 	var selected upgradetypes.Plan

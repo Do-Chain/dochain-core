@@ -48,10 +48,6 @@ func createTestApp(isCheckTx bool, tempDir string) (*doapp.DoApp, sdk.Context) {
 	app.DistrKeeper.Params.Set(ctx, distributiontypes.DefaultParams())
 	app.DistrKeeper.FeePool.Set(ctx, distributiontypes.InitialFeePool())
 
-	taxParams := taxtypes.DefaultParams()
-	taxParams.GasPrices = sdk.NewDecCoins() // tests normally rely on zero gas price, so we are setting it here and fall back to the normal ctx.MinGasPrices
-	app.TaxKeeper.SetParams(ctx, taxParams)
-
 	return app, ctx
 }
 
@@ -125,14 +121,8 @@ func (suite *AnteTestSuite) CreateTestTx(privs []cryptotypes.PrivKey, accNums []
 }
 
 func TestAnteTestSuite(t *testing.T) {
+	if !wasmVMAvailable {
+		t.Skip("WasmVM integration tests require a CGO-enabled build")
+	}
 	suite.Run(t, new(AnteTestSuite))
 }
-
-
-
-
-
-
-
-
-

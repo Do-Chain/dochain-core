@@ -24,6 +24,7 @@
         background: #fafafa;
       }
     </style>
+    <link rel="stylesheet" type="text/css" href="do-chain-theme.css">
   </head>
 
   <body>
@@ -35,7 +36,7 @@
     <script>
       window.onload = function () {
         const ui = SwaggerUIBundle({
-          url: "/swagger/swagger.yaml",
+          url: "/swagger/swagger.yaml?v=do-chain",
           dom_id: "#swagger-ui",
           deepLinking: true,
           presets: [

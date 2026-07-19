@@ -40,20 +40,20 @@ type NodeConfig struct {
 
 const (
 	// common
-	DoDenom          = "udotest"
+	DoDenom             = "udotest"
 	AtomDenom           = "uatom"
-	DoIBCDenom       = "ibc/4627AD2524E3E0523047E35BB76CC90E37D9D57ACF14F0FCBCEB2480705F3CB8"
+	DoIBCDenom          = "ibc/4627AD2524E3E0523047E35BB76CC90E37D9D57ACF14F0FCBCEB2480705F3CB8"
 	MinGasPrice         = "0.000"
 	IbcSendAmount       = 3300000000
 	ValidatorWalletName = "val"
 	// chainA
 	ChainAID      = "do-test-a"
-	DoBalanceA = 20000000000000
+	DoBalanceA    = 20000000000000
 	StakeBalanceA = 110000000000
 	StakeAmountA  = 100000000000
 	// chainB
 	ChainBID          = "do-test-b"
-	DoBalanceB     = 500000000000
+	DoBalanceB        = 500000000000
 	StakeBalanceB     = 440000000000
 	StakeAmountB      = 400000000000
 	GenesisFeeBalance = 100000000000
@@ -75,7 +75,7 @@ var (
 	InitBalanceStrB = fmt.Sprintf("%d%s", DoBalanceB, DoDenom)
 	// InitBalanceStrC = fmt.Sprintf("%d%s", DoBalanceC, DoDenom)
 	LunaToken = sdk.NewInt64Coin(DoDenom, IbcSendAmount) // 3,300luna
-	tenDo  = sdk.Coins{sdk.NewInt64Coin(DoDenom, 10_000_000)}
+	tenDo     = sdk.Coins{sdk.NewInt64Coin(DoDenom, 10_000_000)}
 
 	OneMin      = time.Minute
 	TwoMin      = 2 * time.Minute
@@ -236,11 +236,6 @@ func initGenesis(chain *internalChain, forkHeight int) error {
 		return err
 	}
 
-	err = updateModuleGenesis(appGenState, taxtypes.ModuleName, &taxtypes.GenesisState{}, updateTaxGenesis)
-	if err != nil {
-		return err
-	}
-
 	err = updateModuleGenesis(appGenState, treasurytypes.ModuleName, &treasurytypes.GenesisState{}, updateTreasuryGenesis)
 	if err != nil {
 		return err
@@ -322,11 +317,6 @@ func updateStakeGenesis(stakeGenState *staketypes.GenesisState) {
 	}
 }
 
-func updateTaxGenesis(taxGenState *taxtypes.GenesisState) {
-	taxGenState.Params.BurnTaxRate = BurnTaxRate
-	taxGenState.Params.GasPrices = sdk.NewDecCoins(sdk.NewDecCoinFromDec(DoDenom, sdkmath.LegacyMustNewDecFromStr(MinGasPrice)))
-}
-
 func updateTreasuryGenesis(treasuryGenState *treasurytypes.GenesisState) {
 	treasuryGenState.TaxRate = TaxRate
 	treasuryGenState.Params.TaxPolicy = treasurytypes.PolicyConstraints{
@@ -391,11 +381,3 @@ func setDenomMetadata(genState *banktypes.GenesisState, denom string) {
 		},
 	})
 }
-
-
-
-
-
-
-
-

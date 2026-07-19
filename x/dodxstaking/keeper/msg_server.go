@@ -29,11 +29,13 @@ func (k msgServer) Stake(goCtx context.Context, msg *types.MsgStake) (*types.Msg
 		return nil, err
 	}
 
+	// Account all fees received earlier in this block before the new stake can
+	// participate in them.
+	k.SyncRewardBalances(ctx)
+	k.SettleRewards(ctx, staker)
 	if err := k.BankKeeper.SendCoinsFromAccountToModule(ctx, staker, types.ModuleName, sdk.NewCoins(msg.Amount)); err != nil {
 		return nil, err
 	}
-
-	k.SettleRewards(ctx, staker)
 	k.AddStake(ctx, staker, msg.Amount.Amount)
 	k.ResetRewardDebts(ctx, staker)
 	emitStakeEvent(ctx, types.EventTypeStake, msg.Staker, msg.Amount)
@@ -52,6 +54,8 @@ func (k msgServer) Unstake(goCtx context.Context, msg *types.MsgUnstake) (*types
 		return nil, err
 	}
 
+	// Settle fees against the old stake before it is reduced.
+	k.SyncRewardBalances(ctx)
 	k.SettleRewards(ctx, staker)
 	if err := k.RemoveStake(ctx, staker, msg.Amount.Amount); err != nil {
 		return nil, err
@@ -81,12 +85,16 @@ func (k msgServer) DepositRewards(goCtx context.Context, msg *types.MsgDepositRe
 		return nil, err
 	}
 
+	// Preserve transaction ordering for any previously received direct fees.
+	k.SyncRewardBalances(ctx)
 	if err := k.BankKeeper.SendCoinsFromAccountToModule(ctx, depositor, types.ModuleName, msg.Amount); err != nil {
 		return nil, err
 	}
 
 	for _, coin := range msg.Amount {
-		k.CreditRewards(ctx, coin)
+		if err := k.CreditRewards(ctx, coin); err != nil {
+			return nil, err
+		}
 	}
 
 	ctx.EventManager().EmitEvent(

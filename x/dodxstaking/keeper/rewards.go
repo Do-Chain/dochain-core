@@ -45,9 +45,6 @@ func (k Keeper) GetRewardAccumulator(ctx sdk.Context, denom string) sdkmath.Int 
 // SetRewardAccumulator stores the scaled cumulative rewards per staked DODX for a denom.
 func (k Keeper) SetRewardAccumulator(ctx sdk.Context, denom string, amount sdkmath.Int) {
 	k.setInt(ctx, rewardAccumulatorKey(denom), amount)
-	if amount.IsPositive() {
-		k.setRewardDenom(ctx, denom)
-	}
 }
 
 // GetRewardPoolAmount returns the accounted, unclaimed reward pool for a denom.
@@ -58,9 +55,6 @@ func (k Keeper) GetRewardPoolAmount(ctx sdk.Context, denom string) sdkmath.Int {
 // SetRewardPoolAmount stores the accounted, unclaimed reward pool for a denom.
 func (k Keeper) SetRewardPoolAmount(ctx sdk.Context, denom string, amount sdkmath.Int) {
 	k.setInt(ctx, rewardPoolKey(denom), amount)
-	if amount.IsPositive() {
-		k.setRewardDenom(ctx, denom)
-	}
 }
 
 // GetRewardDebt returns the settled accumulator debt for an account and denom.
@@ -71,9 +65,6 @@ func (k Keeper) GetRewardDebt(ctx sdk.Context, addr sdk.AccAddress, denom string
 // SetRewardDebt stores the settled accumulator debt for an account and denom.
 func (k Keeper) SetRewardDebt(ctx sdk.Context, addr sdk.AccAddress, denom string, amount sdkmath.Int) {
 	k.setInt(ctx, rewardDebtKey(addr, denom), amount)
-	if amount.IsPositive() {
-		k.setRewardDenom(ctx, denom)
-	}
 }
 
 // GetPendingRewardAmount returns the currently claimable stored reward for an account and denom.
@@ -84,13 +75,30 @@ func (k Keeper) GetPendingRewardAmount(ctx sdk.Context, addr sdk.AccAddress, den
 // SetPendingRewardAmount stores the currently claimable reward for an account and denom.
 func (k Keeper) SetPendingRewardAmount(ctx sdk.Context, addr sdk.AccAddress, denom string, amount sdkmath.Int) {
 	k.setInt(ctx, pendingRewardKey(addr, denom), amount)
-	if amount.IsPositive() {
-		k.setRewardDenom(ctx, denom)
-	}
 }
 
-func (k Keeper) setRewardDenom(ctx sdk.Context, denom string) {
-	ctx.KVStore(k.storeKey).Set(rewardDenomKey(denom), []byte{0x01})
+// RegisterRewardDenom adds a bounded reward denom. Registration is performed
+// only by explicit reward deposits or trusted genesis import, never by scanning
+// arbitrary balances sent to the module account.
+func (k Keeper) RegisterRewardDenom(ctx sdk.Context, denom string) error {
+	store := ctx.KVStore(k.storeKey)
+	key := rewardDenomKey(denom)
+	if store.Has(key) {
+		return nil
+	}
+
+	count := 0
+	iterator := storetypes.KVStorePrefixIterator(store, []byte{types.RewardDenomKeyPrefix})
+	defer iterator.Close()
+	for ; iterator.Valid(); iterator.Next() {
+		count++
+		if count >= types.MaxRewardDenoms {
+			return types.ErrTooManyRewardDenoms
+		}
+	}
+
+	store.Set(key, []byte{0x01})
+	return nil
 }
 
 // IterateRewardDenoms iterates all reward denoms that have been accounted.
@@ -107,49 +115,54 @@ func (k Keeper) IterateRewardDenoms(ctx sdk.Context, handler func(denom string) 
 	}
 }
 
-// SyncRewardBalances accounts for native reward coins bank-sent directly to the
-// dodxstaking module account, such as DEX pair fee splits. It excludes locked
-// udodx staking principal and previously-accounted reward pools.
+// SyncRewardBalances accounts only for explicitly registered reward denoms.
+// Querying a fixed, bounded set prevents arbitrary token-factory or IBC dust
+// from increasing BeginBlock and claim work.
 func (k Keeper) SyncRewardBalances(ctx sdk.Context) {
 	moduleAddr := k.AccountKeeper.GetModuleAddress(types.ModuleName)
 	if moduleAddr == nil {
 		return
 	}
 
-	for _, coin := range k.BankKeeper.GetAllBalances(ctx, moduleAddr) {
+	k.IterateRewardDenoms(ctx, func(denom string) bool {
+		coin := k.BankKeeper.GetBalance(ctx, moduleAddr, denom)
 		reserved := k.GetRewardPoolAmount(ctx, coin.Denom)
 		if coin.Denom == core.MicroDODxDenom {
 			reserved = reserved.Add(k.GetTotalStakedAmount(ctx))
 		}
 		if coin.Amount.GT(reserved) {
 			delta := coin.Amount.Sub(reserved)
-			k.CreditRewards(ctx, sdk.NewCoin(coin.Denom, delta))
+			// The denom is already registered, so this cannot hit the cap.
+			_ = k.CreditRewards(ctx, sdk.NewCoin(coin.Denom, delta))
 		}
-	}
+		return false
+	})
 }
 
 // CreditRewards adds a reward coin to the pro-rata DODX-staker accumulator. If
 // there is no DODX staked, the coin remains unaccounted in the module account and
 // will be picked up by a later SyncRewardBalances call once staking exists.
-func (k Keeper) CreditRewards(ctx sdk.Context, reward sdk.Coin) {
+func (k Keeper) CreditRewards(ctx sdk.Context, reward sdk.Coin) error {
 	if !reward.IsValid() || !reward.IsPositive() {
-		return
+		return types.ErrInvalidRewardAmount
+	}
+	if err := k.RegisterRewardDenom(ctx, reward.Denom); err != nil {
+		return err
 	}
 
 	totalStaked := k.GetTotalStakedAmount(ctx)
 	if !totalStaked.IsPositive() {
-		return
+		return nil
 	}
 
 	increment := reward.Amount.Mul(RewardPrecision).Quo(totalStaked)
 	if !increment.IsPositive() {
-		return
+		return nil
 	}
 
 	acc := k.GetRewardAccumulator(ctx, reward.Denom).Add(increment)
 	k.SetRewardAccumulator(ctx, reward.Denom, acc)
 	k.SetRewardPoolAmount(ctx, reward.Denom, k.GetRewardPoolAmount(ctx, reward.Denom).Add(reward.Amount))
-	k.setRewardDenom(ctx, reward.Denom)
 
 	ctx.EventManager().EmitEvent(
 		sdk.NewEvent(
@@ -158,6 +171,7 @@ func (k Keeper) CreditRewards(ctx sdk.Context, reward sdk.Coin) {
 			sdk.NewAttribute(types.AttributeKeyAmount, reward.String()),
 		),
 	)
+	return nil
 }
 
 // SettleRewards moves all rewards accrued by the current stake into pending

@@ -75,14 +75,14 @@ func TestQueryTaxCaps(t *testing.T) {
 	require.NoError(t, err)
 
 	require.Equal(t, []types.QueryTaxCapsResponseItem{{
+		Denom:  "udotest",
+		TaxCap: sdkmath.NewInt(1200000),
+	}, {
 		Denom:  "ukrw",
 		TaxCap: sdkmath.NewInt(1000000000),
 	}, {
 		Denom:  "usdr",
 		TaxCap: sdkmath.NewInt(1000000),
-	}, {
-		Denom:  "udotest",
-		TaxCap: sdkmath.NewInt(1200000),
 	}}, res.TaxCaps)
 }
 
@@ -138,6 +138,7 @@ func TestQueryIndicators(t *testing.T) {
 	input.StakingKeeper.EndBlocker(input.Ctx.WithBlockHeight(int64(core.BlocksPerWeek) - 1))
 
 	proceedsAmt := sdkmath.NewInt(1000000000000)
+	input.OracleKeeper.SetDoExchangeRate(input.Ctx, core.MicroSDRDenom, sdkmath.LegacyOneDec())
 	taxProceeds := sdk.NewCoins(sdk.NewCoin(core.MicroSDRDenom, proceedsAmt))
 	input.TreasuryKeeper.RecordEpochTaxProceeds(input.Ctx, taxProceeds)
 
@@ -163,9 +164,3 @@ func TestQueryIndicators(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, targetIndicators, res)
 }
-
-
-
-
-
-

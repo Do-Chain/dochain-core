@@ -4,7 +4,7 @@ This document records the launch-hardening assumptions expected by the external 
 
 ## Genesis Policy
 
-- Treat `dochain-1` as a public mainnet candidate, not a convenience testnet.
+- Treat `Do-Chain` as the canonical live mainnet chain ID, not a convenience testnet.
 - Generate or harden genesis with `scripts/harden_mainnet_genesis.py`.
 - Launch with at least four independent genesis validators.
 - Regenerate `genesis_time` for the final launch artifact.

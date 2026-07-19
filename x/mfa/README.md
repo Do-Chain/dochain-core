@@ -100,7 +100,7 @@ approval key:
 ```json
 {
   "version": "dochain-mfa-v1",
-  "chain_id": "dochain-1",
+  "chain_id": "Do-Chain",
   "account": "do1...",
   "expires_at": 1700000300,
   "timeout_height": 0,

@@ -118,6 +118,12 @@ func (msg MsgDepositRewards) ValidateBasic() error {
 		if err := validateRewardDenom(coin.Denom); err != nil {
 			return err
 		}
+		// DEX staking rewards are denominated in the native fee token. Keeping
+		// public deposits to a single denomination prevents an attacker from
+		// exhausting the bounded reward-denom registry with arbitrary assets.
+		if coin.Denom != core.MicroDoDenom {
+			return errorsmod.Wrapf(ErrInvalidRewardDenom, "unsupported public reward denom %s", coin.Denom)
+		}
 	}
 
 	return nil

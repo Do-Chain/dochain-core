@@ -22,6 +22,9 @@ type StakingTestSuite struct {
 }
 
 func TestStakingTestSuite(t *testing.T) {
+	if !apptesting.WasmVMAvailable {
+		t.Skip("app integration tests require a CGO-enabled WasmVM build")
+	}
 	suite.Run(t, new(StakingTestSuite))
 }
 

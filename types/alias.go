@@ -37,7 +37,10 @@ const (
 	ColumbusChainID      = "cookie-1"
 	BombayChainID        = "bombay-12"
 	RebelChainID         = "rebel-2"
-	OsmoIbcDenom         = "ibc/0ef15df2f02480ade0bb6e85d9ebb5daea2836d3860e9f97f9aade4f57a31aa0"
+	// DoChainMainnetChainID is the canonical chain ID used by mainnet genesis,
+	// signing domains, upgrades, wallets, and operational tooling.
+	DoChainMainnetChainID = "Do-Chain"
+	OsmoIbcDenom          = "ibc/0ef15df2f02480ade0bb6e85d9ebb5daea2836d3860e9f97f9aade4f57a31aa0"
 )
 
 // function aliases
