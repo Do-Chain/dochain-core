@@ -23,3 +23,14 @@ func TestUnknownStargateQueryRemainsBlocked(t *testing.T) {
 	_, err := GetWhitelistedQuery(queryPath)
 	require.Error(t, err)
 }
+
+func TestWhitelistedQueriesReturnIndependentResponseObjects(t *testing.T) {
+	const queryPath = "/do.market.v1beta1.Query/Swap"
+
+	first, err := GetWhitelistedQuery(queryPath)
+	require.NoError(t, err)
+	second, err := GetWhitelistedQuery(queryPath)
+	require.NoError(t, err)
+
+	require.NotSame(t, first, second)
+}

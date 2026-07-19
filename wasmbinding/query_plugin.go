@@ -25,7 +25,19 @@ type TaxCapQueryResponse struct {
 }
 
 // StargateQuerier dispatches whitelisted stargate queries
-func StargateQuerier(queryRouter baseapp.GRPCQueryRouter, cdc codec.Codec) func(ctx sdk.Context, request *wasmvmtypes.StargateQuery) ([]byte, error) {
+func StargateQuerier(
+	queryRouter baseapp.GRPCQueryRouter,
+	cdc codec.Codec,
+) func(ctx sdk.Context, request *wasmvmtypes.StargateQuery) ([]byte, error) {
+	return stargateQuerierWithQueryServers(queryRouter, cdc, nil, nil)
+}
+
+func stargateQuerierWithQueryServers(
+	queryRouter baseapp.GRPCQueryRouter,
+	cdc codec.Codec,
+	marketQueryServer markettypes.QueryServer,
+	treasuryQueryServer treasurytypes.QueryServer,
+) func(ctx sdk.Context, request *wasmvmtypes.StargateQuery) ([]byte, error) {
 	return func(ctx sdk.Context, request *wasmvmtypes.StargateQuery) ([]byte, error) {
 		queryPath := canonicalStargateQueryPath(request.Path)
 		protoResponseType, err := GetWhitelistedQuery(queryPath)
@@ -35,6 +47,17 @@ func StargateQuerier(queryRouter baseapp.GRPCQueryRouter, cdc codec.Codec) func(
 
 		route := queryRouter.Route(queryPath)
 		if route == nil {
+			response, handled, err := queryNativeStargate(
+				ctx,
+				queryPath,
+				request.Data,
+				cdc,
+				marketQueryServer,
+				treasuryQueryServer,
+			)
+			if handled {
+				return response, err
+			}
 			return nil, wasmvmtypes.UnsupportedRequest{Kind: fmt.Sprintf("No route to query '%s'", queryPath)}
 		}
 
@@ -53,6 +76,65 @@ func StargateQuerier(queryRouter baseapp.GRPCQueryRouter, cdc codec.Codec) func(
 
 		return bz, nil
 	}
+}
+
+func queryNativeStargate(
+	ctx sdk.Context,
+	queryPath string,
+	data []byte,
+	cdc codec.Codec,
+	marketQueryServer markettypes.QueryServer,
+	treasuryQueryServer treasurytypes.QueryServer,
+) ([]byte, bool, error) {
+	switch queryPath {
+	case "/do.market.v1beta1.Query/Swap":
+		if marketQueryServer == nil {
+			return nil, false, nil
+		}
+		var req markettypes.QuerySwapRequest
+		if err := cdc.Unmarshal(data, &req); err != nil {
+			return nil, true, wasmvmtypes.Unknown{}
+		}
+		response, err := marketQueryServer.Swap(sdk.WrapSDKContext(ctx), &req)
+		return marshalNativeStargateResponse(cdc, response, err)
+	case "/do.treasury.v1beta1.Query/TaxRate":
+		if treasuryQueryServer == nil {
+			return nil, false, nil
+		}
+		var req treasurytypes.QueryTaxRateRequest
+		if err := cdc.Unmarshal(data, &req); err != nil {
+			return nil, true, wasmvmtypes.Unknown{}
+		}
+		response, err := treasuryQueryServer.TaxRate(sdk.WrapSDKContext(ctx), &req)
+		return marshalNativeStargateResponse(cdc, response, err)
+	case "/do.treasury.v1beta1.Query/TaxCap":
+		if treasuryQueryServer == nil {
+			return nil, false, nil
+		}
+		var req treasurytypes.QueryTaxCapRequest
+		if err := cdc.Unmarshal(data, &req); err != nil {
+			return nil, true, wasmvmtypes.Unknown{}
+		}
+		response, err := treasuryQueryServer.TaxCap(sdk.WrapSDKContext(ctx), &req)
+		return marshalNativeStargateResponse(cdc, response, err)
+	default:
+		return nil, false, nil
+	}
+}
+
+func marshalNativeStargateResponse(
+	cdc codec.Codec,
+	response codec.ProtoMarshaler,
+	queryErr error,
+) ([]byte, bool, error) {
+	if queryErr != nil {
+		return nil, true, queryErr
+	}
+	bz, err := cdc.MarshalJSON(response)
+	if err != nil {
+		return nil, true, wasmvmtypes.Unknown{}
+	}
+	return bz, true, nil
 }
 
 // normalizeLegacyRoutedQueryJSON transforms legacy routed shape

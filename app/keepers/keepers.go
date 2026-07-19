@@ -423,9 +423,11 @@ func NewAppKeepers(
 	)
 	wasmOpts = append(
 		wasmOpts,
-		dochainwasm.RegisterStargateQueries(
+		dochainwasm.RegisterStargateQueriesWithKeepers(
 			*bApp.GRPCQueryRouter(),
 			appCodec,
+			&appKeepers.MarketKeeper,
+			&appKeepers.TreasuryKeeper,
 		)...,
 	)
 	// this order must be uphold else error will be thrown
@@ -439,9 +441,11 @@ func NewAppKeepers(
 	)
 	wasmOpts = append(
 		wasmOpts,
-		dochainwasm.RegisterStargateQueries(
+		dochainwasm.RegisterStargateQueriesWithKeepers(
 			*bApp.GRPCQueryRouter(),
 			appCodec,
+			&appKeepers.MarketKeeper,
+			&appKeepers.TreasuryKeeper,
 		)...,
 	)
 	// Register legacy query handler for contract-to-contract queries at historical heights

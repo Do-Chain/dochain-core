@@ -2,6 +2,7 @@ package wasmbinding
 
 import (
 	"fmt"
+	"reflect"
 	"sync"
 
 	wasmvmtypes "github.com/CosmWasm/wasmvm/v3/types"
@@ -48,7 +49,15 @@ func GetWhitelistedQuery(queryPath string) (codec.ProtoMarshaler, error) {
 	if !isWhitelisted {
 		return nil, wasmvmtypes.UnsupportedRequest{Kind: fmt.Sprintf("'%s' path is not allowed from the contract", queryPath)}
 	}
-	protoResponseType, ok := protoResponseAny.(codec.ProtoMarshaler)
+	protoResponsePrototype, ok := protoResponseAny.(codec.ProtoMarshaler)
+	if !ok {
+		return nil, wasmvmtypes.Unknown{}
+	}
+	prototypeType := reflect.TypeOf(protoResponsePrototype)
+	if prototypeType.Kind() != reflect.Ptr {
+		return nil, wasmvmtypes.Unknown{}
+	}
+	protoResponseType, ok := reflect.New(prototypeType.Elem()).Interface().(codec.ProtoMarshaler)
 	if !ok {
 		return nil, wasmvmtypes.Unknown{}
 	}

@@ -78,8 +78,6 @@ func (AppModule) RegisterInvariants(_ sdk.InvariantRegistry) {}
 func (AppModule) QuerierRoute() string { return types.QuerierRoute }
 
 func (am AppModule) RegisterServices(cfg module.Configurator) {
-	types.RegisterQueryServer(cfg.QueryServer(), keeper.NewQuerier(am.keeper))
-
 	m := keeper.NewMigrator(am.keeper)
 	err := cfg.RegisterMigration(types.ModuleName, 1, m.Migrate1to2)
 	if err != nil {

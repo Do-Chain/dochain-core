@@ -50,8 +50,6 @@ import (
 	customante "github.com/Daviddochain/dochain-core/v4/custom/auth/ante"
 	custompost "github.com/Daviddochain/dochain-core/v4/custom/auth/post"
 	customserver "github.com/Daviddochain/dochain-core/v4/server"
-	marketkeeper "github.com/Daviddochain/dochain-core/v4/x/market/keeper"
-	markettypes "github.com/Daviddochain/dochain-core/v4/x/market/types"
 	abci "github.com/cometbft/cometbft/abci/types"
 	tmjson "github.com/cometbft/cometbft/libs/json"
 	tmos "github.com/cometbft/cometbft/libs/os"
@@ -265,12 +263,6 @@ func NewDoApp(
 	if err != nil {
 		panic(err)
 	}
-
-	// Do not add the market module to appModules here: doing so would also enable
-	// its consensus-changing end blocker on an existing chain. Register only its
-	// read-only query service so clients and allowlisted Wasm Stargate queries
-	// can use the existing keeper safely.
-	markettypes.RegisterQueryServer(app.GRPCQueryRouter(), marketkeeper.NewQuerier(app.MarketKeeper))
 
 	autocliv1.RegisterQueryServer(app.GRPCQueryRouter(), runtimeservices.NewAutoCLIQueryService(app.mm.Modules))
 
