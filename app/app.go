@@ -79,8 +79,11 @@ import (
 	"github.com/spf13/cast"
 )
 
-const appName = "DoApp"
-const manualV16UpgradeFilename = "manual-v16-upgrade.json"
+const (
+	appName                  = "DoApp"
+	manualV16UpgradeFilename = "manual-v16-upgrade.json"
+	manualV17UpgradeFilename = "manual-v17-upgrade.json"
+)
 
 var (
 	// DefaultNodeHome defines default home directories for dochaind
@@ -140,6 +143,7 @@ type DoApp struct {
 	homePath       string
 
 	manualV16UpgradePlan upgradetypes.Plan
+	manualV17UpgradePlan upgradetypes.Plan
 
 	// the module manager
 	mm *module.Manager
@@ -405,6 +409,9 @@ func (app *DoApp) PreBlocker(ctx sdk.Context, _ *abci.RequestFinalizeBlock) (*sd
 	if err := app.applyManualV16Upgrade(ctx); err != nil {
 		return nil, err
 	}
+	if err := app.applyManualV17Upgrade(ctx); err != nil {
+		return nil, err
+	}
 	return resp, nil
 }
 
@@ -560,13 +567,12 @@ func (app *DoApp) setupUpgradeStoreLoaders() {
 	}
 
 	if upgradeInfo.Name == "" {
-		manualV16Plan, found, err := readManualV16UpgradePlan(app.homePath)
+		manualUpgradePlan, found, err := app.readManualUpgradePlans()
 		if err != nil {
-			panic(fmt.Sprintf("failed to read manual v16 upgrade plan %s", err))
+			panic(fmt.Sprintf("failed to read manual upgrade plan %s", err))
 		}
 		if found {
-			app.manualV16UpgradePlan = manualV16Plan
-			upgradeInfo = manualV16Plan
+			upgradeInfo = manualUpgradePlan
 		}
 	}
 
@@ -583,7 +589,14 @@ func (app *DoApp) setupUpgradeStoreLoaders() {
 }
 
 func (app *DoApp) applyManualV16Upgrade(ctx sdk.Context) error {
-	plan := app.manualV16UpgradePlan
+	return app.applyManualUpgrade(ctx, app.manualV16UpgradePlan)
+}
+
+func (app *DoApp) applyManualV17Upgrade(ctx sdk.Context) error {
+	return app.applyManualUpgrade(ctx, app.manualV17UpgradePlan)
+}
+
+func (app *DoApp) applyManualUpgrade(ctx sdk.Context, plan upgradetypes.Plan) error {
 	if plan.Name == "" || ctx.BlockHeight() != plan.Height {
 		return nil
 	}
@@ -596,13 +609,43 @@ func (app *DoApp) applyManualV16Upgrade(ctx sdk.Context) error {
 		return nil
 	}
 
-	ctx.Logger().Info("applying manual v16 upgrade", "height", plan.Height)
+	ctx.Logger().Info("applying manual upgrade", "name", plan.Name, "height", plan.Height)
 	return app.UpgradeKeeper.ApplyUpgrade(ctx, plan)
 }
 
-func readManualV16UpgradePlan(homePath string) (upgradetypes.Plan, bool, error) {
+func (app *DoApp) readManualUpgradePlans() (upgradetypes.Plan, bool, error) {
+	manualPlans := []struct {
+		filename    string
+		upgradeName string
+		target      *upgradetypes.Plan
+	}{
+		{manualV16UpgradeFilename, v16.UpgradeName, &app.manualV16UpgradePlan},
+		{manualV17UpgradeFilename, v17.UpgradeName, &app.manualV17UpgradePlan},
+	}
+
+	var selected upgradetypes.Plan
+	foundAny := false
+	for _, manualPlan := range manualPlans {
+		plan, found, err := readManualUpgradePlan(app.homePath, manualPlan.filename, manualPlan.upgradeName)
+		if err != nil {
+			return plan, false, err
+		}
+		if !found {
+			continue
+		}
+		*manualPlan.target = plan
+		if !foundAny || plan.Height > selected.Height {
+			selected = plan
+			foundAny = true
+		}
+	}
+
+	return selected, foundAny, nil
+}
+
+func readManualUpgradePlan(homePath, filename, upgradeName string) (upgradetypes.Plan, bool, error) {
 	var plan upgradetypes.Plan
-	path := filepath.Join(homePath, "data", manualV16UpgradeFilename)
+	path := filepath.Join(homePath, "data", filename)
 	bz, err := os.ReadFile(path)
 	if err != nil {
 		if os.IsNotExist(err) {
@@ -615,10 +658,10 @@ func readManualV16UpgradePlan(homePath string) (upgradetypes.Plan, bool, error) 
 		return plan, false, err
 	}
 	if plan.Name == "" {
-		plan.Name = v16.UpgradeName
+		plan.Name = upgradeName
 	}
-	if plan.Name != v16.UpgradeName {
-		return plan, false, fmt.Errorf("manual v16 upgrade plan name must be %q, got %q", v16.UpgradeName, plan.Name)
+	if plan.Name != upgradeName {
+		return plan, false, fmt.Errorf("manual upgrade plan %s name must be %q, got %q", filename, upgradeName, plan.Name)
 	}
 	if err := plan.ValidateBasic(); err != nil {
 		return plan, false, err
