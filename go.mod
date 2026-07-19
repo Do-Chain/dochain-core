@@ -1,4 +1,6 @@
-go 1.25.12
+go 1.25.8
+
+toolchain go1.25.12
 
 module github.com/Daviddochain/dochain-core/v4
 

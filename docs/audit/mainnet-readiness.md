@@ -28,7 +28,7 @@ This document records the launch-hardening assumptions expected by the external 
 
 ## Build Environment
 
-- Final audit build should be Linux with Go `1.24.7`, CGO enabled, and WasmVM build dependencies installed.
+- Final audit build should be Linux with Go `1.25.12`, CGO enabled, and WasmVM build dependencies installed.
 - Windows without `gcc` cannot validate Wasmd-dependent packages because the no-CGO keeper path is not compatible with Wasmd helper code.
 
 ## Known Open Items

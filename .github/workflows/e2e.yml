@@ -28,7 +28,7 @@ jobs:
             - name: Setup Go
               uses: actions/setup-go@v5
               with:
-                  go-version: "1.24"
+                  go-version: "1.25.12"
                   cache: false
 
             # 3. Cache Go modules + build cache
@@ -111,7 +111,7 @@ jobs:
             - name: Setup Go
               uses: actions/setup-go@v5
               with:
-                  go-version: "1.24"
+                  go-version: "1.25.12"
                   cache: false
 
             # 3. Cache Go modules + build cache

@@ -34,7 +34,7 @@ Record these values before staging:
 - commit: `<COMMIT>`
 - release tag: `<TAG>`
 - Linux amd64 SHA256: `<SHA256>`
-- Go version: `go1.24.x`
+- Go version: `go1.25.12`
 - build command: `CGO_ENABLED=1 LEDGER_ENABLED=false make build`
 
 Required green checks:

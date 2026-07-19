@@ -46,7 +46,7 @@ make build-linux
 ./build/dochaind version
 ```
 
-If Docker is unavailable, build on a Linux host with Go `1.24.7`, CGO enabled, gcc/build-essential, and WasmVM v3 static library support.
+If Docker is unavailable, build on a Linux host with Go `1.25.12`, CGO enabled, gcc/build-essential, and WasmVM v3 static library support.
 
 Do not use `shared.Dockerfile`; it is intentionally deprecated.
 
@@ -84,7 +84,7 @@ Required hardened defaults:
 ## Pre-Launch Acceptance Checks
 
 - `go test` passes for the targeted consensus/security paths documented in the audit notes.
-- SDK gov/staking/bank and touched keeper packages pass under Go `1.24.7`.
+- SDK gov/staking/bank and touched keeper packages pass under Go `1.25.12`.
 - Oracle root Jest suite passes, feeder/price-server TypeScript compile, and production `npm audit` is clean.
 - `govulncheck` is clean for the SDK targeted paths.
 - Core `govulncheck` still reports `GO-2026-4740` through WasmVM/msgpack; mitigate by keeping public Wasm upload and instantiate disabled until upstream fixes are available.
