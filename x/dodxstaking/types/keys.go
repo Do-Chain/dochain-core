@@ -32,4 +32,6 @@ var (
 	TotalStakedKey        = []byte{0x02}
 	GovernanceEnabledKey  = []byte{0x03}
 	GovernanceEnabledFlag = []byte{0x01}
+	RewardsEnabledKey     = []byte{0x04}
+	RewardsEnabledFlag    = []byte{0x01}
 )

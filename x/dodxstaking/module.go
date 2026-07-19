@@ -139,7 +139,10 @@ func (AppModule) WeightedOperations(module.SimulationState) []simtypes.WeightedO
 }
 
 func (am AppModule) BeginBlock(ctx context.Context) error {
-	am.keeper.SyncRewardBalances(sdk.UnwrapSDKContext(ctx))
+	sdkCtx := sdk.UnwrapSDKContext(ctx)
+	if am.keeper.RewardsEnabled(sdkCtx) {
+		am.keeper.SyncRewardBalances(sdkCtx)
+	}
 	return nil
 }
 

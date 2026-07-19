@@ -156,6 +156,22 @@ func (k Keeper) GovernanceEnabled(ctx sdk.Context) bool {
 	return store.Has(types.GovernanceEnabledKey)
 }
 
+// SetRewardsEnabled records whether DEX fee reward accounting is active.
+func (k Keeper) SetRewardsEnabled(ctx sdk.Context, enabled bool) {
+	store := ctx.KVStore(k.storeKey)
+	if !enabled {
+		store.Delete(types.RewardsEnabledKey)
+		return
+	}
+	store.Set(types.RewardsEnabledKey, types.RewardsEnabledFlag)
+}
+
+// RewardsEnabled reports whether DEX fee reward accounting is active.
+func (k Keeper) RewardsEnabled(ctx sdk.Context) bool {
+	store := ctx.KVStore(k.storeKey)
+	return store.Has(types.RewardsEnabledKey)
+}
+
 func stakeKey(addr sdk.AccAddress) []byte {
 	key := make([]byte, 1+len(addr))
 	key[0] = types.StakeKeyPrefix

@@ -11,4 +11,5 @@ var (
 	ErrInvalidRewardDenom  = errorsmod.Register(ModuleName, 7, "invalid DODx staking reward denom")
 	ErrInvalidRewardAmount = errorsmod.Register(ModuleName, 8, "invalid DODx staking reward amount")
 	ErrNoRewards           = errorsmod.Register(ModuleName, 9, "no DODx staking rewards available")
+	ErrRewardsDisabled     = errorsmod.Register(ModuleName, 10, "DODx staking rewards are not enabled")
 )

@@ -72,6 +72,10 @@ func (k msgServer) DepositRewards(goCtx context.Context, msg *types.MsgDepositRe
 	}
 
 	ctx := sdk.UnwrapSDKContext(goCtx)
+	if !k.RewardsEnabled(ctx) {
+		return nil, types.ErrRewardsDisabled
+	}
+
 	depositor, err := sdk.AccAddressFromBech32(msg.Depositor)
 	if err != nil {
 		return nil, err
@@ -102,6 +106,10 @@ func (k msgServer) ClaimRewards(goCtx context.Context, msg *types.MsgClaimReward
 	}
 
 	ctx := sdk.UnwrapSDKContext(goCtx)
+	if !k.RewardsEnabled(ctx) {
+		return nil, types.ErrRewardsDisabled
+	}
+
 	claimer, err := sdk.AccAddressFromBech32(msg.Claimer)
 	if err != nil {
 		return nil, err
