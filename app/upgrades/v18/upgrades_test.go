@@ -19,6 +19,21 @@ func TestSecureWasmAccessParamsClosesBothPermissions(t *testing.T) {
 	require.NoError(t, secured.ValidateBasic())
 }
 
+func TestShouldSecureWasmInstantiateConfig(t *testing.T) {
+	require.False(t, shouldSecureWasmInstantiateConfig(wasmtypes.CodeInfo{
+		InstantiateConfig: wasmtypes.AllowNobody,
+	}))
+	require.True(t, shouldSecureWasmInstantiateConfig(wasmtypes.CodeInfo{
+		InstantiateConfig: wasmtypes.AllowEverybody,
+	}))
+	require.True(t, shouldSecureWasmInstantiateConfig(wasmtypes.CodeInfo{
+		InstantiateConfig: wasmtypes.AccessConfig{
+			Permission: wasmtypes.AccessTypeAnyOfAddresses,
+			Addresses:  []string{"do1qqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqnrql8a"},
+		},
+	}))
+}
+
 func TestV18HasNoStoreLayoutChanges(t *testing.T) {
 	require.Empty(t, Upgrade.StoreUpgrades.Added)
 	require.Empty(t, Upgrade.StoreUpgrades.Deleted)
