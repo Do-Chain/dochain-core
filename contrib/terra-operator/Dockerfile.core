@@ -1,5 +1,5 @@
-# docker build . -t cosmwasm/wasmd:latest
-# docker run --rm -it cosmwasm/wasmd:latest /bin/sh
+# docker build . -t cosmwasm/wasmd:local
+# docker run --rm -it cosmwasm/wasmd:local /bin/sh
 FROM golang:1.25.12-alpine3.23 AS go-builder
 ARG source=.
 

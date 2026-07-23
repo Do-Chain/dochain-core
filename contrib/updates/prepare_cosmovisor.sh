@@ -12,6 +12,7 @@ OLD_COMMIT=d9139025424184098dafb1fd67ef74499cf2e0b6
 OLD_ARCHIVE_SHA256=ade8b21a2cdc5c4eea12d427bd758eaf670bfd40079909a0f451e3094af59334
 OLD_SOURCE_DIR=dochain-core-${OLD_COMMIT}
 OLD_BASE_IMAGE=golang:1.24.7-alpine3.22
+OLD_IMAGE_TAG=${OLD_IMAGE_TAG:-${OLD_COMMIT}}
 # this command will retrieve the folder with the largest number in format v<number>
 SOFTWARE_UPGRADE_NAME=$(ls -d -- ./app/upgrades/v* | sort -Vr | head -n 1 | xargs basename)
 BUILDDIR=${1:-}
@@ -50,9 +51,9 @@ if [ ! -f "$BUILDDIR/old/dochaind" ]; then
         --build-arg "BASE_IMAGE=${OLD_BASE_IMAGE}" \
         --build-arg "GIT_COMMIT=${OLD_COMMIT}" \
         --build-arg "GIT_VERSION=v1.0.1-rc6" \
-        --tag dochain/dochaind-binary.old \
+        --tag "dochain/dochaind-binary.old:${OLD_IMAGE_TAG}" \
         -f contrib/updates/Dockerfile.old .
-    docker create --platform linux/amd64 --name old-temp dochain/dochaind-binary.old:latest
+    docker create --platform linux/amd64 --name old-temp "dochain/dochaind-binary.old:${OLD_IMAGE_TAG}"
     docker cp old-temp:/usr/local/bin/dochaind "$BUILDDIR/old/"
     docker rm old-temp
 fi

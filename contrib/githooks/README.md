@@ -15,7 +15,7 @@ in the user's search `$PATH` environment variable:
 
 ```
 $ go get golang.org/x/tools/cmd/goimports
-$ go get github.com/golangci/misspell/cmd/misspell@master
+$ go install github.com/golangci/misspell/cmd/misspell@v0.8.0
 ```
 
 It also runs `go mod tidy` and `golangci-lint` if available.

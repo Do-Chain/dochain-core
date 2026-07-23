@@ -1,0 +1,51 @@
+name: Dependency Security
+
+on:
+  pull_request:
+    paths:
+      - "**/*.go"
+      - "**/go.mod"
+      - "**/go.sum"
+      - ".github/workflows/dependency-security.yml"
+  push:
+    branches:
+      - main
+      - "release/**"
+    paths:
+      - "**/*.go"
+      - "**/go.mod"
+      - "**/go.sum"
+      - ".github/workflows/dependency-security.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  dependency-review:
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/dependency-review-action@v4
+        with:
+          fail-on-severity: high
+
+  govulncheck:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-go@v5
+        with:
+          go-version: "1.25.12"
+          check-latest: true
+      - name: Install govulncheck
+        run: go install golang.org/x/vuln/cmd/govulncheck@v1.6.0
+      - name: Run govulncheck
+        run: |
+          set -euo pipefail
+          govulncheck ./...
+          for mod in third_party/wasmd tests/interchaintest; do
+            if [ -f "$mod/go.mod" ]; then
+              (cd "$mod" && govulncheck ./...)
+            fi
+          done

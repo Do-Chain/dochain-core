@@ -11,7 +11,9 @@ BUILDDIR ?= $(CURDIR)/build
 SIMAPP = ./app
 HTTPS_GIT := https://github.com/Daviddochain/dochain-core.git
 DOCKER := $(shell which docker)
-DOCKER_BUF := $(DOCKER) run --rm -v $(CURDIR):/workspace --workdir /workspace bufbuild/buf
+BUF_DOCKER_IMAGE ?= bufbuild/buf:1.59.0
+DOCKER_IMAGE_TAG ?= $(COMMIT)
+DOCKER_BUF := $(DOCKER) run --rm -v $(CURDIR):/workspace --workdir /workspace $(BUF_DOCKER_IMAGE)
 GO_VERSION := $(shell cat go.mod | grep -E 'go [0-9]+\.[0-9]+' | cut -d ' ' -f 2)
 
 # TESTNET PARAMETERS
@@ -125,8 +127,8 @@ endif
 
 build-linux:
 	mkdir -p $(BUILDDIR)
-	docker build --platform linux/amd64 --no-cache --tag daviddochain/dochain-core ./ 
-	docker create --platform linux/amd64 --name temp daviddochain/dochain-core:latest
+	docker build --platform linux/amd64 --no-cache --tag daviddochain/dochain-core:$(DOCKER_IMAGE_TAG) ./
+	docker create --platform linux/amd64 --name temp daviddochain/dochain-core:$(DOCKER_IMAGE_TAG)
 	docker cp temp:/usr/local/bin/dochaind $(BUILDDIR)/
 	docker rm temp
 
@@ -305,7 +307,7 @@ lint-fix:
 	@$(golangci_lint_cmd) run --fix --issues-exit-code=0
 
 format:
-	@go install mvdan.cc/gofumpt@latest
+	@go install mvdan.cc/gofumpt@v0.10.0
 	@go install github.com/golangci/golangci-lint/v2/cmd/golangci-lint@$(golangci_version)
 	find . -name '*.go' -type f -not -path "./vendor*" -not -path "*.git*" -not -path "./client/docs/statik/statik.go" -not -path "./tests/mocks/*" -not -name "*.pb.go" -not -name "*.pb.gw.go" -not -name "*.pulsar.go" -not -path "./crypto/keys/secp256k1/*" | xargs gofumpt -w -l
 	$(golangci_lint_cmd) run --fix

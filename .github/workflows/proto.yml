@@ -6,18 +6,22 @@ on:
     type: [ labeled ]
     paths:
       - "**.proto"
+
+permissions:
+  contents: read
+
 jobs:
   lint:
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
-      - uses: actions/checkout@master
+      - uses: actions/checkout@v5
       - name: lint
         run: make proto-lint
   breakage:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@master
+      - uses: actions/checkout@v5
       - name: check-breakage
         run: make proto-check-breaking
 

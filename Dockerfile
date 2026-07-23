@@ -123,7 +123,7 @@ RUN --mount=type=cache,target=/root/.cache/go-build \
 
 ################################################################################
 
-FROM alpine AS do-core
+FROM alpine:3.23 AS do-core
 
 RUN apk update && apk add wget lz4 aria2 curl jq gawk coreutils "zlib>1.2.12-r2" libssl3
 
@@ -142,6 +142,8 @@ EXPOSE 26656
 EXPOSE 26657
 
 WORKDIR /app
+
+USER do
 
 CMD ["dochaind", "version"]
 
