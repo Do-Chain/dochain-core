@@ -13,13 +13,13 @@ func TestV151UsesCanonicalMainnetChainID(t *testing.T) {
 	require.Equal(t, core.DoChainMainnetChainID, doChainID)
 }
 
-func TestHistoricalWasmPermissionsRemainReplayCompatible(t *testing.T) {
+func TestWasmPermissionsDefaultClosedUnlessAllowlisted(t *testing.T) {
 	originalAllowlist := cosmWasmUploadAllowlist
 	t.Cleanup(func() { cosmWasmUploadAllowlist = originalAllowlist })
 
 	cosmWasmUploadAllowlist = nil
 	access := wasmUploadAccessConfig()
-	require.Equal(t, wasmtypes.AccessTypeEverybody, access.Permission)
+	require.Equal(t, wasmtypes.AccessTypeNobody, access.Permission)
 	require.Empty(t, access.Addresses)
 
 	cosmWasmUploadAllowlist = []string{"do1qqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqnrql8a"}

@@ -21,7 +21,6 @@ func runForkLogic(ctx sdk.Context, appKeepers *keepers.AppKeepers, _ *module.Man
 
 	setGovDepositParams(ctx, appKeepers)
 	setWasmAccessParams(ctx, appKeepers)
-	disableDelegatorSlashingOnJail(ctx, appKeepers)
 }
 
 func setGovDepositParams(ctx sdk.Context, appKeepers *keepers.AppKeepers) {
@@ -60,21 +59,5 @@ func wasmUploadAccessConfig() wasmtypes.AccessConfig {
 		}
 	}
 
-	return wasmtypes.AccessConfig{Permission: wasmtypes.AccessTypeEverybody}
-}
-
-func disableDelegatorSlashingOnJail(ctx sdk.Context, appKeepers *keepers.AppKeepers) {
-	oracleParams := appKeepers.OracleKeeper.GetParams(ctx)
-	oracleParams.SlashFraction = sdkmath.LegacyZeroDec()
-	appKeepers.OracleKeeper.SetParams(ctx, oracleParams)
-
-	slashingParams, err := appKeepers.SlashingKeeper.GetParams(ctx)
-	if err != nil {
-		panic(err)
-	}
-	slashingParams.SlashFractionDowntime = sdkmath.LegacyZeroDec()
-	slashingParams.SlashFractionDoubleSign = sdkmath.LegacyZeroDec()
-	if err := appKeepers.SlashingKeeper.SetParams(ctx, slashingParams); err != nil {
-		panic(err)
-	}
+	return wasmtypes.AccessConfig{Permission: wasmtypes.AccessTypeNobody}
 }

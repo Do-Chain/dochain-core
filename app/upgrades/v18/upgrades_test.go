@@ -3,7 +3,10 @@ package v18
 import (
 	"testing"
 
+	sdkmath "cosmossdk.io/math"
 	wasmtypes "github.com/CosmWasm/wasmd/x/wasm/types"
+	oracletypes "github.com/Daviddochain/dochain-core/v4/x/oracle/types"
+	slashingtypes "github.com/cosmos/cosmos-sdk/x/slashing/types"
 	"github.com/stretchr/testify/require"
 )
 
@@ -38,4 +41,26 @@ func TestV18HasNoStoreLayoutChanges(t *testing.T) {
 	require.Empty(t, Upgrade.StoreUpgrades.Added)
 	require.Empty(t, Upgrade.StoreUpgrades.Deleted)
 	require.Empty(t, Upgrade.StoreUpgrades.Renamed)
+}
+
+func TestSecureOraclePenaltyParamsRestoresZeroPenalties(t *testing.T) {
+	params := oracletypes.DefaultParams()
+	params.SlashFraction = sdkmath.LegacyZeroDec()
+	params.MinValidPerWindow = sdkmath.LegacyZeroDec()
+
+	secured := secureOraclePenaltyParams(params)
+	require.Equal(t, oracletypes.DefaultSlashFraction, secured.SlashFraction)
+	require.Equal(t, oracletypes.DefaultMinValidPerWindow, secured.MinValidPerWindow)
+	require.NoError(t, secured.Validate())
+}
+
+func TestSecureSlashingPenaltyParamsRestoresZeroPenalties(t *testing.T) {
+	params := slashingtypes.DefaultParams()
+	params.SlashFractionDoubleSign = sdkmath.LegacyZeroDec()
+	params.SlashFractionDowntime = sdkmath.LegacyZeroDec()
+
+	secured := secureSlashingPenaltyParams(params)
+	require.Equal(t, slashingtypes.DefaultSlashFractionDoubleSign, secured.SlashFractionDoubleSign)
+	require.Equal(t, slashingtypes.DefaultSlashFractionDowntime, secured.SlashFractionDowntime)
+	require.NoError(t, secured.Validate())
 }

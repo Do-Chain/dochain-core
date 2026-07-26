@@ -10,8 +10,10 @@ import (
 	wasmtypes "github.com/CosmWasm/wasmd/x/wasm/types"
 	"github.com/Daviddochain/dochain-core/v4/app/keepers"
 	"github.com/Daviddochain/dochain-core/v4/app/upgrades"
+	oracletypes "github.com/Daviddochain/dochain-core/v4/x/oracle/types"
 	sdk "github.com/cosmos/cosmos-sdk/types"
 	"github.com/cosmos/cosmos-sdk/types/module"
+	slashingtypes "github.com/cosmos/cosmos-sdk/x/slashing/types"
 )
 
 // CreateV18UpgradeHandler closes permissionless Wasm upload and default
@@ -32,6 +34,9 @@ func CreateV18UpgradeHandler(
 			return nil, err
 		}
 		if err := secureExistingWasmInstantiatePermissions(sdk.UnwrapSDKContext(ctx), keepers.WasmKeeper); err != nil {
+			return nil, err
+		}
+		if err := restoreNonZeroPenaltyParams(ctx, keepers); err != nil {
 			return nil, err
 		}
 
@@ -66,4 +71,46 @@ func secureExistingWasmInstantiatePermissions(ctx sdk.Context, wasmKeeper wasmke
 
 func shouldSecureWasmInstantiateConfig(info wasmtypes.CodeInfo) bool {
 	return !info.InstantiateConfig.Equals(wasmtypes.AllowNobody)
+}
+
+func restoreNonZeroPenaltyParams(ctx context.Context, keepers *keepers.AppKeepers) error {
+	sdkCtx := sdk.UnwrapSDKContext(ctx)
+	oracleParams := secureOraclePenaltyParams(keepers.OracleKeeper.GetParams(sdkCtx))
+	if err := oracleParams.Validate(); err != nil {
+		return fmt.Errorf("secure oracle penalty params: %w", err)
+	}
+	keepers.OracleKeeper.SetParams(sdkCtx, oracleParams)
+
+	slashingParams, err := keepers.SlashingKeeper.GetParams(ctx)
+	if err != nil {
+		return err
+	}
+	slashingParams = secureSlashingPenaltyParams(slashingParams)
+	if err := slashingParams.Validate(); err != nil {
+		return fmt.Errorf("secure slashing penalty params: %w", err)
+	}
+	if err := keepers.SlashingKeeper.SetParams(ctx, slashingParams); err != nil {
+		return err
+	}
+	return nil
+}
+
+func secureOraclePenaltyParams(params oracletypes.Params) oracletypes.Params {
+	if params.SlashFraction.IsZero() {
+		params.SlashFraction = oracletypes.DefaultSlashFraction
+	}
+	if params.MinValidPerWindow.IsZero() {
+		params.MinValidPerWindow = oracletypes.DefaultMinValidPerWindow
+	}
+	return params
+}
+
+func secureSlashingPenaltyParams(params slashingtypes.Params) slashingtypes.Params {
+	if params.SlashFractionDoubleSign.IsZero() {
+		params.SlashFractionDoubleSign = slashingtypes.DefaultSlashFractionDoubleSign
+	}
+	if params.SlashFractionDowntime.IsZero() {
+		params.SlashFractionDowntime = slashingtypes.DefaultSlashFractionDowntime
+	}
+	return params
 }
