@@ -1,17 +1,23 @@
 #!/bin/bash
+set -euo pipefail
 
-VERSION="${1:-v0.5.11-oracle}"
+if [ "$#" -ne 1 ] || [ -z "$1" ] ; then
+  echo "usage: ./build_all.sh <core-image-tag>" >&2
+  exit 1
+fi
 
-pushd .. 
+VERSION="$1"
 
-git checkout $VERSION
-docker build -t dochain/core:$VERSION .
+pushd ..
+
+git checkout "$VERSION"
+docker build -t "dochain/core:$VERSION" .
 git checkout -
 
 popd
 
-docker build --build-arg version=$VERSION --build-arg chainid=cookie-1 -t dochain/core-node:$VERSION .
-docker build --build-arg version=$VERSION --build-arg chainid=bombay-12 -t dochain/core-node:$VERSION-testnet .
+docker build --build-arg "version=$VERSION" --build-arg chainid=cookie-1 -t "dochain/core-node:$VERSION" .
+docker build --build-arg "version=$VERSION" --build-arg chainid=bombay-12 -t "dochain/core-node:$VERSION-testnet" .
 
 
 

@@ -1,5 +1,5 @@
-ARG base_image=daviddochain/dochain-core
-ARG version=latest
+ARG base_image=dochain/core
+ARG version
 
 FROM ${base_image}:${version}
 

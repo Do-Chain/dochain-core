@@ -2,6 +2,8 @@
 # docker run --rm -it cosmwasm/wasmd:local /bin/sh
 FROM golang:1.25.12-alpine3.23 AS go-builder
 ARG source=.
+ARG dochain_core_ref=release/v1.0.2-v18
+ARG mimalloc_ref=v2.1.2
 
 # this comes from standard alpine nightly file
 #  https://github.com/rust-lang/docker-rust-nightly/blob/master/alpine3.12/Dockerfile
@@ -12,11 +14,11 @@ RUN apk add git cmake
 # NOTE: add these to run with LEDGER_ENABLED=true
 # RUN apk add libusb-dev linux-headers
 
-RUN git clone https://github.com/Daviddochain/dochain-core.git && mv core /code
+RUN git clone --depth 1 --branch "${dochain_core_ref}" https://github.com/Do-Chain/dochain-core.git /code
 WORKDIR /code
 
 # Install mimalloc
-RUN git clone --depth 1 https://github.com/microsoft/mimalloc; cd mimalloc; mkdir build; cd build; cmake ..; make -j$(nproc); make install
+RUN git clone --depth 1 --branch "${mimalloc_ref}" https://github.com/microsoft/mimalloc; cd mimalloc; mkdir build; cd build; cmake ..; make -j$(nproc); make install
 ENV MIMALLOC_RESERVE_HUGE_OS_PAGES=4
 
 # Cosmwasm - download correct libwasmvm version and verify checksum
