@@ -8,6 +8,7 @@ import (
 	core "github.com/Daviddochain/dochain-core/v4/types"
 	sdk "github.com/cosmos/cosmos-sdk/types"
 	"github.com/cosmos/cosmos-sdk/types/module"
+	slashingtypes "github.com/cosmos/cosmos-sdk/x/slashing/types"
 )
 
 const doChainID = "Do-Chain"
@@ -21,6 +22,7 @@ func runForkLogic(ctx sdk.Context, appKeepers *keepers.AppKeepers, _ *module.Man
 
 	setGovDepositParams(ctx, appKeepers)
 	setWasmAccessParams(ctx, appKeepers)
+	disableDelegatorWideSlashing(ctx, appKeepers)
 }
 
 func setGovDepositParams(ctx sdk.Context, appKeepers *keepers.AppKeepers) {
@@ -60,4 +62,21 @@ func wasmUploadAccessConfig() wasmtypes.AccessConfig {
 	}
 
 	return wasmtypes.AccessConfig{Permission: wasmtypes.AccessTypeNobody}
+}
+
+func disableDelegatorWideSlashing(ctx sdk.Context, appKeepers *keepers.AppKeepers) {
+	params, err := appKeepers.SlashingKeeper.GetParams(ctx)
+	if err != nil {
+		panic(err)
+	}
+	params = delegatorWideSlashingDisabled(params)
+	if err := appKeepers.SlashingKeeper.SetParams(ctx, params); err != nil {
+		panic(err)
+	}
+}
+
+func delegatorWideSlashingDisabled(params slashingtypes.Params) slashingtypes.Params {
+	params.SlashFractionDowntime = sdkmath.LegacyZeroDec()
+	params.SlashFractionDoubleSign = sdkmath.LegacyZeroDec()
+	return params
 }

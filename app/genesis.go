@@ -33,6 +33,7 @@ func HardenMainnetGenesisDefaults(genesis map[string]json.RawMessage) {
 	hardenIBCGenesis(genesis)
 	hardenICAGenesis(genesis)
 	hardenTransferGenesis(genesis)
+	hardenSlashingGenesis(genesis)
 	hardenOracleGenesis(genesis)
 	hardenBankGenesis(genesis)
 }
@@ -74,6 +75,14 @@ func hardenTransferGenesis(genesis map[string]json.RawMessage) {
 		params := ensureObject(state, "params")
 		params["send_enabled"] = false
 		params["receive_enabled"] = false
+	})
+}
+
+func hardenSlashingGenesis(genesis map[string]json.RawMessage) {
+	patchGenesisModule(genesis, "slashing", func(state map[string]any) {
+		params := ensureObject(state, "params")
+		params["slash_fraction_double_sign"] = mainnetZeroTobinTax
+		params["slash_fraction_downtime"] = mainnetZeroTobinTax
 	})
 }
 
