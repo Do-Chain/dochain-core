@@ -13,8 +13,8 @@ services:
        - MINIMUM_GAS_PRICES=0.05udo,0.104938usdr,0.15uusd,170.0ukrw
        - MONIKER=rebel-docker-node
        - VALIDATOR_KEYNAME=local
-       - VALIDATOR_PASSPHRASE=12345678
-       - VALIDATOR_MNENOMIC=torch swamp cancel lift never october child harsh rib aspect luxury word peanut length bamboo hawk material vehicle glue above west random sketch author
+       - VALIDATOR_PASSPHRASE=${VALIDATOR_PASSPHRASE:-}
+       - VALIDATOR_MNENOMIC=${VALIDATOR_MNENOMIC:-}
        - VALIDATOR_AMOUNT=10000000udo
        - VALIDATOR_COMMISSION_RATE=0.1
        - VALIDATOR_COMMISSION_RATE_MAX=0.2
@@ -27,10 +27,10 @@ services:
        - VALIDATOR_AUTO_CONFIG=0
      restart: always
      ports:     
-       - "1317:1317"
-       - "9090:9090"
+       - "127.0.0.1:1317:1317"
+       - "127.0.0.1:9090:9090"
        - "26656:26656"
-       - "26657:26657"
+       - "127.0.0.1:26657:26657"
      volumes:
        - do:/do       
      networks:

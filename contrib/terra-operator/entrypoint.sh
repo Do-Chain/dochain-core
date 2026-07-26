@@ -78,6 +78,11 @@ if [ "$NEW_NETWORK" = "false" ] ; then
   done
 
   if [ ! -z "$VALIDATOR_AUTO_CONFIG" ] && [ "$VALIDATOR_AUTO_CONFIG" = "1" ]; then
+    if [ -z "$VALIDATOR_KEYNAME" ] || [ -z "$VALIDATOR_MNENOMIC" ] || [ -z "$VALIDATOR_PASSPHRASE" ] ; then
+      echo "VALIDATOR_AUTO_CONFIG=1 requires VALIDATOR_KEYNAME, VALIDATOR_MNENOMIC, and VALIDATOR_PASSPHRASE" >&2
+      exit 1
+    fi
+
     if [ ! -z "$VALIDATOR_KEYNAME" ] && [ ! -z "$VALIDATOR_MNENOMIC" ] && [ ! -z "$VALIDATOR_PASSPHRASE" ] ; then
       dochaind keys add $VALIDATOR_KEYNAME --recover > ~/.do/keys.log 2>&1 << EOF
 $VALIDATOR_MNENOMIC

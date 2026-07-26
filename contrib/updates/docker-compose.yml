@@ -6,8 +6,9 @@ services:
     platform: linux/amd64
     image: "daviddochain/dochaind-upgrade-env"
     ports:
-      - "9090:9090"
-      - "26656-26657:26656-26657"
+      - "127.0.0.1:9090:9090"
+      - "26656:26656"
+      - "127.0.0.1:26657:26657"
     environment:
       - ID=0
       - LOG=dochaind.log
@@ -25,8 +26,9 @@ services:
     platform: linux/amd64
     image: "daviddochain/dochaind-upgrade-env"
     ports:
-      - "9091:9090"
-      - "26659-26660:26656-26657"
+      - "127.0.0.1:9091:9090"
+      - "26659:26656"
+      - "127.0.0.1:26660:26657"
     environment:
       - ID=1
       - LOG=dochaind.log
@@ -50,8 +52,9 @@ services:
       - DAEMON_NAME=dochaind
       - DAEMON_RESTART_AFTER_UPGRADE=true
     ports:
-      - "9092:9090"
-      - "26661-26662:26656-26657"
+      - "127.0.0.1:9092:9090"
+      - "26661:26656"
+      - "127.0.0.1:26662:26657"
     volumes:
       - ../../build:/dochaind:Z
     networks:
@@ -69,8 +72,9 @@ services:
       - DAEMON_NAME=dochaind
       - DAEMON_RESTART_AFTER_UPGRADE=true
     ports:
-      - "9093:9090"
-      - "26663-26664:26656-26657"
+      - "127.0.0.1:9093:9090"
+      - "26663:26656"
+      - "127.0.0.1:26664:26657"
     volumes:
       - ../../build:/dochaind:Z
     networks:
@@ -87,8 +91,9 @@ services:
       - DAEMON_NAME=dochaind
       - DAEMON_RESTART_AFTER_UPGRADE=true
     ports:
-      - "9094:9090"
-      - "26665-26666:26656-26657"
+      - "127.0.0.1:9094:9090"
+      - "26665:26656"
+      - "127.0.0.1:26666:26657"
     volumes:
       - ../../build:/dochaind:Z
     networks:
@@ -106,8 +111,9 @@ services:
       - DAEMON_NAME=dochaind
       - DAEMON_RESTART_AFTER_UPGRADE=true
     ports:
-      - "9095:9090"
-      - "26667-26668:26656-26657"
+      - "127.0.0.1:9095:9090"
+      - "26667:26656"
+      - "127.0.0.1:26668:26657"
     volumes:
       - ../../build:/dochaind:Z
     networks:
@@ -125,8 +131,9 @@ services:
       - DAEMON_NAME=dochaind
       - DAEMON_RESTART_AFTER_UPGRADE=true
     ports:
-      - "9096:9090"
-      - "26669-26670:26656-26657"
+      - "127.0.0.1:9096:9090"
+      - "26669:26656"
+      - "127.0.0.1:26670:26657"
     volumes:
       - ../../build:/dochaind:Z
     networks:
