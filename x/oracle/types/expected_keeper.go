@@ -14,8 +14,9 @@ import (
 type StakingKeeper interface {
 	Validator(ctx context.Context, address sdk.ValAddress) (stakingtypes.ValidatorI, error) // get validator by operator address; nil when validator not found
 	TotalBondedTokens(ctx context.Context) (math.Int, error)                                // total bonded tokens within the validator set
-	// slash the validator and delegators of the validator, specifying offence height, offence power, and slash fraction
-	Slash(ctx context.Context, address sdk.ConsAddress, offenceHeight int64, offencePower int64, slashFraction math.LegacyDec) (math.Int, error)
+	BondDenom(ctx context.Context) (string, error)
+	GetDelegation(ctx context.Context, delAddr sdk.AccAddress, valAddr sdk.ValAddress) (stakingtypes.Delegation, error)
+	Unbond(ctx context.Context, delAddr sdk.AccAddress, valAddr sdk.ValAddress, shares math.LegacyDec) (math.Int, error)
 	Jail(ctx context.Context, address sdk.ConsAddress) error                       // jail a validator
 	ValidatorsPowerStoreIterator(ctx context.Context) (storetypes.Iterator, error) // an iterator for the current validator power store
 	MaxValidators(ctx context.Context) (uint32, error)                             // MaxValidators returns the maximum amount of bonded validators
@@ -44,13 +45,8 @@ type BankKeeper interface {
 	SendCoinsFromModuleToModule(ctx context.Context, senderModule string, recipientModule string, amt sdk.Coins) error
 	GetDenomMetaData(ctx context.Context, denom string) (banktypes.Metadata, bool)
 	SetDenomMetaData(ctx context.Context, denomMetaData banktypes.Metadata)
+	BurnCoins(ctx context.Context, moduleName string, amt sdk.Coins) error
 
 	// only used for simulation
 	SpendableCoins(ctx context.Context, addr sdk.AccAddress) sdk.Coins
 }
-
-
-
-
-
-

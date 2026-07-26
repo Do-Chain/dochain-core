@@ -91,3 +91,42 @@ func TestSlashAndResetMissCounters(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, amt, validator.Tokens)
 }
+
+func TestOracleSlashOnlyBurnsValidatorSelfDelegation(t *testing.T) {
+	input := CreateTestInput(t)
+	operator, pubKey := ValAddrs[0], ValPubKeys[0]
+	selfAmt := sdk.TokensFromConsensusPower(100, sdk.DefaultPowerReduction)
+	externalAmt := sdk.TokensFromConsensusPower(50, sdk.DefaultPowerReduction)
+	stakingMsgSvr := stakingkeeper.NewMsgServerImpl(input.StakingKeeper)
+	ctx := input.Ctx
+
+	_, err := stakingMsgSvr.CreateValidator(ctx, NewTestMsgCreateValidator(operator, pubKey, selfAmt))
+	require.NoError(t, err)
+	input.StakingKeeper.EndBlocker(ctx)
+
+	params, err := input.StakingKeeper.GetParams(ctx)
+	require.NoError(t, err)
+	_, err = stakingMsgSvr.Delegate(ctx, stakingtypes.NewMsgDelegate(Addrs[1].String(), operator.String(), sdk.NewCoin(params.BondDenom, externalAmt)))
+	require.NoError(t, err)
+
+	votePeriodsPerWindow := int64(input.OracleKeeper.SlashWindow(input.Ctx)) / int64(input.OracleKeeper.VotePeriod(input.Ctx))
+	minValidVotes := input.OracleKeeper.MinValidPerWindow(input.Ctx).MulInt64(votePeriodsPerWindow).TruncateInt64()
+	slashFraction := input.OracleKeeper.SlashFraction(input.Ctx)
+	selfSlash := slashFraction.MulInt(selfAmt).TruncateInt()
+
+	input.OracleKeeper.SetMissCounter(input.Ctx, operator, uint64(votePeriodsPerWindow-minValidVotes+1))
+	input.OracleKeeper.SlashAndResetMissCounters(input.Ctx)
+
+	validator, err := input.StakingKeeper.GetValidator(input.Ctx, operator)
+	require.NoError(t, err)
+	require.Equal(t, selfAmt.Add(externalAmt).Sub(selfSlash), validator.GetBondedTokens())
+	require.True(t, validator.IsJailed())
+
+	selfDelegation, err := input.StakingKeeper.GetDelegation(input.Ctx, sdk.AccAddress(operator), operator)
+	require.NoError(t, err)
+	require.Equal(t, selfAmt.Sub(selfSlash), validator.TokensFromShares(selfDelegation.Shares).TruncateInt())
+
+	externalDelegation, err := input.StakingKeeper.GetDelegation(input.Ctx, Addrs[1], operator)
+	require.NoError(t, err)
+	require.Equal(t, externalAmt, validator.TokensFromShares(externalDelegation.Shares).TruncateInt())
+}

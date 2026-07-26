@@ -62,8 +62,16 @@ func (a oracleStakingAdapter) TotalBondedTokens(_ context.Context) (sdkmath.Int,
 	return p, nil
 }
 
-func (a oracleStakingAdapter) Slash(ctx context.Context, cons sdk.ConsAddress, height int64, power int64, frac sdkmath.LegacyDec) (sdkmath.Int, error) {
-	return a.sk.Slash(ctx, cons, height, power, frac)
+func (a oracleStakingAdapter) BondDenom(ctx context.Context) (string, error) {
+	return a.sk.BondDenom(ctx)
+}
+
+func (a oracleStakingAdapter) GetDelegation(ctx context.Context, delAddr sdk.AccAddress, valAddr sdk.ValAddress) (stakingtypes.Delegation, error) {
+	return a.sk.GetDelegation(ctx, delAddr, valAddr)
+}
+
+func (a oracleStakingAdapter) Unbond(ctx context.Context, delAddr sdk.AccAddress, valAddr sdk.ValAddress, shares sdkmath.LegacyDec) (sdkmath.Int, error) {
+	return a.sk.Unbond(ctx, delAddr, valAddr, shares)
 }
 
 func (a oracleStakingAdapter) Jail(ctx context.Context, cons sdk.ConsAddress) error {
@@ -439,9 +447,3 @@ func setupValidators(t *testing.T) (TestInput, stakingtypes.MsgServer) {
 
 	return input, stakingMsgSvr
 }
-
-
-
-
-
-

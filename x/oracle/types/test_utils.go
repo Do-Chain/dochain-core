@@ -75,7 +75,15 @@ func (DummyStakingKeeper) TotalBondedTokens(context.Context) (math.Int, error) {
 	return math.ZeroInt(), nil
 }
 
-func (DummyStakingKeeper) Slash(context.Context, sdk.ConsAddress, int64, int64, math.LegacyDec) (math.Int, error) {
+func (DummyStakingKeeper) BondDenom(context.Context) (string, error) {
+	return sdk.DefaultBondDenom, nil
+}
+
+func (DummyStakingKeeper) GetDelegation(context.Context, sdk.AccAddress, sdk.ValAddress) (stakingtypes.Delegation, error) {
+	return stakingtypes.Delegation{}, stakingtypes.ErrNoDelegation
+}
+
+func (DummyStakingKeeper) Unbond(context.Context, sdk.AccAddress, sdk.ValAddress, math.LegacyDec) (math.Int, error) {
 	return math.ZeroInt(), nil
 }
 
@@ -160,9 +168,3 @@ func NewMockValidator(valAddr sdk.ValAddress, power int64) MockValidator {
 		operator: valAddr,
 	}
 }
-
-
-
-
-
-

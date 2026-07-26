@@ -6,7 +6,6 @@ import (
 	sdkmath "cosmossdk.io/math"
 	wasmtypes "github.com/CosmWasm/wasmd/x/wasm/types"
 	oracletypes "github.com/Daviddochain/dochain-core/v4/x/oracle/types"
-	slashingtypes "github.com/cosmos/cosmos-sdk/x/slashing/types"
 	"github.com/stretchr/testify/require"
 )
 
@@ -51,16 +50,5 @@ func TestSecureOraclePenaltyParamsRestoresZeroPenalties(t *testing.T) {
 	secured := secureOraclePenaltyParams(params)
 	require.Equal(t, oracletypes.DefaultSlashFraction, secured.SlashFraction)
 	require.Equal(t, oracletypes.DefaultMinValidPerWindow, secured.MinValidPerWindow)
-	require.NoError(t, secured.Validate())
-}
-
-func TestSecureSlashingPenaltyParamsRestoresZeroPenalties(t *testing.T) {
-	params := slashingtypes.DefaultParams()
-	params.SlashFractionDoubleSign = sdkmath.LegacyZeroDec()
-	params.SlashFractionDowntime = sdkmath.LegacyZeroDec()
-
-	secured := secureSlashingPenaltyParams(params)
-	require.Equal(t, slashingtypes.DefaultSlashFractionDoubleSign, secured.SlashFractionDoubleSign)
-	require.Equal(t, slashingtypes.DefaultSlashFractionDowntime, secured.SlashFractionDowntime)
 	require.NoError(t, secured.Validate())
 }
