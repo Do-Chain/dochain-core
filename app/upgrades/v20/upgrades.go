@@ -1,5 +1,5 @@
 //nolint:revive
-package v19
+package v20
 
 import (
 	"context"
@@ -13,9 +13,9 @@ import (
 
 const dodexWasmUploadAdmin = "do1t7rnyus7q3667txrwexcrgkjpr5rwm8z0qaycg"
 
-// CreateV19UpgradeHandler narrows Wasm uploads to the controlled DODEX admin
+// CreateV20UpgradeHandler narrows Wasm uploads to the controlled DODEX admin
 // wallet and keeps default instantiation closed.
-func CreateV19UpgradeHandler(
+func CreateV20UpgradeHandler(
 	mm *module.Manager,
 	cfg module.Configurator,
 	_ upgrades.BaseAppParamManager,

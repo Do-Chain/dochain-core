@@ -1,4 +1,4 @@
-package v19
+package v20
 
 import (
 	"testing"
@@ -43,7 +43,7 @@ func TestWhitelistDodexWasmUploaderPreservesExistingAllowlist(t *testing.T) {
 	require.NoError(t, updated.ValidateBasic())
 }
 
-func TestV19AddsValidatorRewardsStore(t *testing.T) {
+func TestV20AddsValidatorRewardsStore(t *testing.T) {
 	require.Equal(t, []string{validatorrewardstypes.StoreKey}, Upgrade.StoreUpgrades.Added)
 	require.Empty(t, Upgrade.StoreUpgrades.Deleted)
 	require.Empty(t, Upgrade.StoreUpgrades.Renamed)
