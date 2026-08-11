@@ -432,7 +432,6 @@ func NewAppKeepers(
 			&appKeepers.MarketKeeper,
 			&appKeepers.OracleKeeper,
 			&appKeepers.TreasuryKeeper,
-			&appKeepers.DODxStakingKeeper,
 		)...,
 	)
 	wasmOpts = append(
@@ -451,7 +450,6 @@ func NewAppKeepers(
 			&appKeepers.MarketKeeper,
 			&appKeepers.OracleKeeper,
 			&appKeepers.TreasuryKeeper,
-			&appKeepers.DODxStakingKeeper,
 		)...,
 	)
 	wasmOpts = append(
