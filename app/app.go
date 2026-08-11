@@ -33,6 +33,7 @@ import (
 	v16 "github.com/Daviddochain/dochain-core/v4/app/upgrades/v16"
 	v17 "github.com/Daviddochain/dochain-core/v4/app/upgrades/v17"
 	v18 "github.com/Daviddochain/dochain-core/v4/app/upgrades/v18"
+	v19 "github.com/Daviddochain/dochain-core/v4/app/upgrades/v19"
 	v20 "github.com/Daviddochain/dochain-core/v4/app/upgrades/v20"
 	v2 "github.com/Daviddochain/dochain-core/v4/app/upgrades/v2"
 	v3 "github.com/Daviddochain/dochain-core/v4/app/upgrades/v3"
@@ -86,6 +87,7 @@ const (
 	manualV16UpgradeFilename = "manual-v16-upgrade.json"
 	manualV17UpgradeFilename = "manual-v17-upgrade.json"
 	manualV18UpgradeFilename = "manual-v18-upgrade.json"
+	manualV19UpgradeFilename = "manual-v19-upgrade.json"
 	manualV20UpgradeFilename = "manual-v20-upgrade.json"
 )
 
@@ -118,6 +120,7 @@ var (
 		v16.Upgrade,
 		v17.Upgrade,
 		v18.Upgrade,
+		v19.Upgrade,
 		v20.Upgrade,
 	}
 
@@ -151,6 +154,7 @@ type DoApp struct {
 	manualV16UpgradePlan upgradetypes.Plan
 	manualV17UpgradePlan upgradetypes.Plan
 	manualV18UpgradePlan upgradetypes.Plan
+	manualV19UpgradePlan upgradetypes.Plan
 	manualV20UpgradePlan upgradetypes.Plan
 
 	// the module manager
@@ -423,6 +427,9 @@ func (app *DoApp) PreBlocker(ctx sdk.Context, _ *abci.RequestFinalizeBlock) (*sd
 	if err := app.applyManualV18Upgrade(ctx); err != nil {
 		return nil, err
 	}
+	if err := app.applyManualV19Upgrade(ctx); err != nil {
+		return nil, err
+	}
 	if err := app.applyManualV20Upgrade(ctx); err != nil {
 		return nil, err
 	}
@@ -633,6 +640,10 @@ func (app *DoApp) applyManualV18Upgrade(ctx sdk.Context) error {
 	return app.applyManualUpgrade(ctx, app.manualV18UpgradePlan)
 }
 
+func (app *DoApp) applyManualV19Upgrade(ctx sdk.Context) error {
+	return app.applyManualUpgrade(ctx, app.manualV19UpgradePlan)
+}
+
 func (app *DoApp) applyManualV20Upgrade(ctx sdk.Context) error {
 	return app.applyManualUpgrade(ctx, app.manualV20UpgradePlan)
 }
@@ -663,6 +674,7 @@ func (app *DoApp) readManualUpgradePlans() (upgradetypes.Plan, bool, error) {
 		{manualV16UpgradeFilename, v16.UpgradeName, &app.manualV16UpgradePlan},
 		{manualV17UpgradeFilename, v17.UpgradeName, &app.manualV17UpgradePlan},
 		{manualV18UpgradeFilename, v18.UpgradeName, &app.manualV18UpgradePlan},
+		{manualV19UpgradeFilename, v19.UpgradeName, &app.manualV19UpgradePlan},
 		{manualV20UpgradeFilename, v20.UpgradeName, &app.manualV20UpgradePlan},
 	}
 
