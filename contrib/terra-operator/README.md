@@ -23,7 +23,7 @@ docker run -e ENABLE_LCD=false -it -p 127.0.0.1:1317:1317 -p 127.0.0.1:26657:266
 Custom gas fees: 
 
 ```
-docker run -e MINIMUM_GAS_PRICES="0.01133udo,0.15uusd,0.104938usdr,169.77ukrw,428.571umnt,0.125ueur,0.98ucny,16.37ujpy,0.11ugbp,10.88uinr,0.19ucad,0.14uchf,0.19uaud,0.2usgd,4.62uthb,1.25usek,1.25unok,0.9udkk,2180.0uidr,7.6uphp,1.17uhkd" -it -p 127.0.0.1:1317:1317 -p 127.0.0.1:26657:26657 -p 26656:26656 dochain/core-node:v0.5.11-oracle
+docker run -e MINIMUM_GAS_PRICES="10000000udo" -it -p 127.0.0.1:1317:1317 -p 127.0.0.1:26657:26657 -p 26656:26656 dochain/core-node:v0.5.11-oracle
 ```
 
 Starting the sync from a snapshot:

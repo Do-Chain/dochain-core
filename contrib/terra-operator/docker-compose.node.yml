@@ -10,7 +10,7 @@ services:
        - NEW_NETWORK=true
        - ENABLE_LCD=true
        - DOCHAIND_STARTUP_PARAMETERS=--x-crisis-skip-assert-invariants
-       - MINIMUM_GAS_PRICES=0.05udo,0.104938usdr,0.15uusd,170.0ukrw
+       - MINIMUM_GAS_PRICES=10000000udo
        - MONIKER=rebel-docker-node
        - VALIDATOR_KEYNAME=local
        - VALIDATOR_PASSPHRASE=${VALIDATOR_PASSPHRASE:-}
