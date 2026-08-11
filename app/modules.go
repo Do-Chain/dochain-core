@@ -36,6 +36,8 @@ import (
 	oracletypes "github.com/Daviddochain/dochain-core/v4/x/oracle/types"
 	"github.com/Daviddochain/dochain-core/v4/x/treasury"
 	treasurytypes "github.com/Daviddochain/dochain-core/v4/x/treasury/types"
+	"github.com/Daviddochain/dochain-core/v4/x/validatorrewards"
+	validatorrewardstypes "github.com/Daviddochain/dochain-core/v4/x/validatorrewards/types"
 	"github.com/Daviddochain/dochain-core/v4/x/vesting"
 	"github.com/cosmos/cosmos-sdk/types/module"
 	"github.com/cosmos/cosmos-sdk/x/auth"
@@ -105,6 +107,7 @@ var (
 		oracle.AppModuleBasic{},
 		market.AppModuleBasic{},
 		treasury.AppModuleBasic{},
+		validatorrewards.AppModuleBasic{},
 		dodxstaking.AppModuleBasic{},
 		customwasm.AppModuleBasic{},
 		dyncomm.AppModuleBasic{},
@@ -114,28 +117,30 @@ var (
 	)
 	// module account permissions
 	maccPerms = map[string][]string{
-		authtypes.FeeCollectorName:     nil, // just added to enable align fee
-		treasurytypes.BurnModuleName:   {authtypes.Burner},
-		minttypes.ModuleName:           {authtypes.Minter},
-		markettypes.ModuleName:         {authtypes.Minter, authtypes.Burner},
-		oracletypes.ModuleName:         nil,
-		distrtypes.ModuleName:          nil,
-		buybackLiquidityPoolName:       nil,
-		treasurytypes.ModuleName:       {authtypes.Minter, authtypes.Burner},
-		stakingtypes.BondedPoolName:    {authtypes.Burner, authtypes.Staking},
-		stakingtypes.NotBondedPoolName: {authtypes.Burner, authtypes.Staking},
-		govtypes.ModuleName:            {authtypes.Burner},
-		dodxstakingtypes.ModuleName:    nil,
-		ibctransfertypes.ModuleName:    {authtypes.Minter, authtypes.Burner},
-		icatypes.ModuleName:            nil,
-		wasmtypes.ModuleName:           {authtypes.Burner},
+		authtypes.FeeCollectorName:       nil, // just added to enable align fee
+		treasurytypes.BurnModuleName:     {authtypes.Burner},
+		minttypes.ModuleName:             {authtypes.Minter},
+		markettypes.ModuleName:           {authtypes.Minter, authtypes.Burner},
+		oracletypes.ModuleName:           nil,
+		distrtypes.ModuleName:            nil,
+		buybackLiquidityPoolName:         nil,
+		treasurytypes.ModuleName:         {authtypes.Minter, authtypes.Burner},
+		validatorrewardstypes.ModuleName: nil,
+		stakingtypes.BondedPoolName:      {authtypes.Burner, authtypes.Staking},
+		stakingtypes.NotBondedPoolName:   {authtypes.Burner, authtypes.Staking},
+		govtypes.ModuleName:              {authtypes.Burner},
+		dodxstakingtypes.ModuleName:      nil,
+		ibctransfertypes.ModuleName:      {authtypes.Minter, authtypes.Burner},
+		icatypes.ModuleName:              nil,
+		wasmtypes.ModuleName:             {authtypes.Burner},
 	}
 	// module accounts that are allowed to receive tokens
 	allowedReceivingModAcc = map[string]bool{
-		oracletypes.ModuleName:       true,
-		treasurytypes.BurnModuleName: true,
-		buybackLiquidityPoolName:     true,
-		dodxstakingtypes.ModuleName:  true,
+		oracletypes.ModuleName:           true,
+		treasurytypes.BurnModuleName:     true,
+		buybackLiquidityPoolName:         true,
+		validatorrewardstypes.ModuleName: true,
+		dodxstakingtypes.ModuleName:      true,
 	}
 )
 
@@ -166,6 +171,7 @@ func appModules(
 		ica.NewAppModule(&app.ICAControllerKeeper, &app.ICAHostKeeper),
 		oracle.NewAppModule(appCodec, app.OracleKeeper, app.AccountKeeper, app.BankKeeper),
 		treasury.NewAppModule(appCodec, app.TreasuryKeeper),
+		validatorrewards.NewAppModule(appCodec, app.ValidatorRewardsKeeper),
 		dodxstaking.NewAppModule(appCodec, app.DODxStakingKeeper),
 		customwasm.NewAppModule(appCodec, &app.WasmKeeper, app.StakingKeeper, app.AccountKeeper, app.BankKeeper, app.MsgServiceRouter(), app.GetSubspace(wasmtypes.ModuleName), app.GetKey(wasmtypes.StoreKey)),
 		dyncomm.NewAppModule(appCodec, app.DyncommKeeper, app.StakingKeeper),
@@ -198,6 +204,7 @@ func simulationModules(
 		oracle.NewAppModule(appCodec, app.OracleKeeper, app.AccountKeeper, app.BankKeeper),
 		market.NewAppModule(appCodec, app.MarketKeeper, app.AccountKeeper, app.BankKeeper, app.OracleKeeper),
 		treasury.NewAppModule(appCodec, app.TreasuryKeeper),
+		validatorrewards.NewAppModule(appCodec, app.ValidatorRewardsKeeper),
 		dodxstaking.NewAppModule(appCodec, app.DODxStakingKeeper),
 		customwasm.NewAppModule(appCodec, &app.WasmKeeper, app.StakingKeeper, app.AccountKeeper, app.BankKeeper, app.MsgServiceRouter(), app.GetSubspace(wasmtypes.ModuleName), app.GetKey(wasmtypes.StoreKey)),
 		dyncomm.NewAppModule(appCodec, app.DyncommKeeper, app.StakingKeeper),
@@ -228,6 +235,7 @@ func orderBeginBlockers() []string {
 		// Do-Chain modules
 		oracletypes.ModuleName,
 		treasurytypes.ModuleName,
+		validatorrewardstypes.ModuleName,
 		markettypes.ModuleName,
 		dodxstakingtypes.ModuleName,
 		wasmtypes.ModuleName,
@@ -262,6 +270,7 @@ func orderEndBlockers() []string {
 		// Do-Chain modules
 		oracletypes.ModuleName,
 		treasurytypes.ModuleName,
+		validatorrewardstypes.ModuleName,
 		markettypes.ModuleName,
 		dodxstakingtypes.ModuleName,
 		wasmtypes.ModuleName,
@@ -302,6 +311,7 @@ func orderInitGenesis() []string {
 		markettypes.ModuleName,
 		oracletypes.ModuleName,
 		treasurytypes.ModuleName,
+		validatorrewardstypes.ModuleName,
 		dodxstakingtypes.ModuleName,
 		wasmtypes.ModuleName,
 		dyncommtypes.ModuleName,

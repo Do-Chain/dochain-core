@@ -1,0 +1,13 @@
+syntax = "proto3";
+package do.validatorrewards.v1beta1;
+
+import "do/validatorrewards/v1beta1/rewards.proto";
+
+option go_package = "github.com/Daviddochain/dochain-core/v4/x/validatorrewards/types";
+
+// GenesisState defines x/validatorrewards genesis state.
+message GenesisState {
+  uint64 next_campaign_id = 1;
+  repeated RewardDenom reward_denoms = 2;
+  repeated Campaign campaigns = 3;
+}

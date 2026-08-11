@@ -30,6 +30,8 @@ import (
 	oracletypes "github.com/Daviddochain/dochain-core/v4/x/oracle/types"
 	treasurykeeper "github.com/Daviddochain/dochain-core/v4/x/treasury/keeper"
 	treasurytypes "github.com/Daviddochain/dochain-core/v4/x/treasury/types"
+	validatorrewardskeeper "github.com/Daviddochain/dochain-core/v4/x/validatorrewards/keeper"
+	validatorrewardstypes "github.com/Daviddochain/dochain-core/v4/x/validatorrewards/types"
 	"github.com/cosmos/cosmos-sdk/baseapp"
 	"github.com/cosmos/cosmos-sdk/codec"
 	"github.com/cosmos/cosmos-sdk/codec/address"
@@ -80,34 +82,35 @@ type AppKeepers struct {
 	memKeys map[string]*storetypes.MemoryStoreKey
 
 	// keepers
-	AccountKeeper         authkeeper.AccountKeeper
-	AuthzKeeper           authzkeeper.Keeper
-	BankKeeper            bankkeeper.Keeper
-	StakingKeeper         *stakingkeeper.Keeper
-	SlashingKeeper        slashingkeeper.Keeper
-	MintKeeper            mintkeeper.Keeper
-	DistrKeeper           distrkeeper.Keeper
-	GovKeeper             govkeeper.Keeper
-	UpgradeKeeper         *upgradekeeper.Keeper
-	ParamsKeeper          paramskeeper.Keeper
-	IBCKeeper             *ibckeeper.Keeper // IBC Keeper must be a pointer in the appKeepers, so we can SetRouter on it correctly
-	ICAControllerKeeper   icacontrollerkeeper.Keeper
-	ICAHostKeeper         icahostkeeper.Keeper
-	EvidenceKeeper        evidencekeeper.Keeper
-	FeeGrantKeeper        feegrantkeeper.Keeper
-	TransferKeeper        ibctransferkeeper.Keeper
-	OracleKeeper          oraclekeeper.Keeper
-	MarketKeeper          marketkeeper.Keeper
-	TreasuryKeeper        treasurykeeper.Keeper
-	WasmKeeper            wasmkeeper.Keeper
-	DODxStakingKeeper     dodxstakingkeeper.Keeper
-	DyncommKeeper         dyncommkeeper.Keeper
-	MFAKeeper             mfakeeper.Keeper
-	IBCHooksKeeper        *ibchookskeeper.Keeper
-	ConsensusParamsKeeper consensusparamkeeper.Keeper
-	Ics20WasmHooks        *ibchooks.WasmHooks
-	IBCHooksWrapper       *ibchooks.ICS4Middleware
-	TransferStack         ibctransfer.IBCModule
+	AccountKeeper          authkeeper.AccountKeeper
+	AuthzKeeper            authzkeeper.Keeper
+	BankKeeper             bankkeeper.Keeper
+	StakingKeeper          *stakingkeeper.Keeper
+	SlashingKeeper         slashingkeeper.Keeper
+	MintKeeper             mintkeeper.Keeper
+	DistrKeeper            distrkeeper.Keeper
+	GovKeeper              govkeeper.Keeper
+	UpgradeKeeper          *upgradekeeper.Keeper
+	ParamsKeeper           paramskeeper.Keeper
+	IBCKeeper              *ibckeeper.Keeper // IBC Keeper must be a pointer in the appKeepers, so we can SetRouter on it correctly
+	ICAControllerKeeper    icacontrollerkeeper.Keeper
+	ICAHostKeeper          icahostkeeper.Keeper
+	EvidenceKeeper         evidencekeeper.Keeper
+	FeeGrantKeeper         feegrantkeeper.Keeper
+	TransferKeeper         ibctransferkeeper.Keeper
+	OracleKeeper           oraclekeeper.Keeper
+	MarketKeeper           marketkeeper.Keeper
+	TreasuryKeeper         treasurykeeper.Keeper
+	ValidatorRewardsKeeper validatorrewardskeeper.Keeper
+	WasmKeeper             wasmkeeper.Keeper
+	DODxStakingKeeper      dodxstakingkeeper.Keeper
+	DyncommKeeper          dyncommkeeper.Keeper
+	MFAKeeper              mfakeeper.Keeper
+	IBCHooksKeeper         *ibchookskeeper.Keeper
+	ConsensusParamsKeeper  consensusparamkeeper.Keeper
+	Ics20WasmHooks         *ibchooks.WasmHooks
+	IBCHooksWrapper        *ibchooks.ICS4Middleware
+	TransferStack          ibctransfer.IBCModule
 }
 
 const (
@@ -138,31 +141,32 @@ func NewAppKeepers(
 	appOpts servertypes.AppOptions,
 ) *AppKeepers {
 	keys := map[string]*storetypes.KVStoreKey{
-		authtypes.StoreKey:           storetypes.NewKVStoreKey(authtypes.StoreKey),
-		banktypes.StoreKey:           storetypes.NewKVStoreKey(banktypes.StoreKey),
-		stakingtypes.StoreKey:        storetypes.NewKVStoreKey(stakingtypes.StoreKey),
-		minttypes.StoreKey:           storetypes.NewKVStoreKey(minttypes.StoreKey),
-		distrtypes.StoreKey:          storetypes.NewKVStoreKey(distrtypes.StoreKey),
-		slashingtypes.StoreKey:       storetypes.NewKVStoreKey(slashingtypes.StoreKey),
-		govtypes.StoreKey:            storetypes.NewKVStoreKey(govtypes.StoreKey),
-		paramstypes.StoreKey:         storetypes.NewKVStoreKey(paramstypes.StoreKey),
-		consensusparamtypes.StoreKey: storetypes.NewKVStoreKey(consensusparamtypes.StoreKey),
-		upgradetypes.StoreKey:        storetypes.NewKVStoreKey(upgradetypes.StoreKey),
-		feegrant.StoreKey:            storetypes.NewKVStoreKey(feegrant.StoreKey),
-		evidencetypes.StoreKey:       storetypes.NewKVStoreKey(evidencetypes.StoreKey),
-		authzkeeper.StoreKey:         storetypes.NewKVStoreKey(authzkeeper.StoreKey),
-		ibcexported.StoreKey:         storetypes.NewKVStoreKey(ibcexported.StoreKey),
-		ibctransfertypes.StoreKey:    storetypes.NewKVStoreKey(ibctransfertypes.StoreKey),
-		icacontrollertypes.StoreKey:  storetypes.NewKVStoreKey(icacontrollertypes.StoreKey),
-		icahosttypes.StoreKey:        storetypes.NewKVStoreKey(icahosttypes.StoreKey),
-		ibchookstypes.StoreKey:       storetypes.NewKVStoreKey(ibchookstypes.StoreKey),
-		oracletypes.StoreKey:         storetypes.NewKVStoreKey(oracletypes.StoreKey),
-		markettypes.StoreKey:         storetypes.NewKVStoreKey(markettypes.StoreKey),
-		treasurytypes.StoreKey:       storetypes.NewKVStoreKey(treasurytypes.StoreKey),
-		wasmtypes.StoreKey:           storetypes.NewKVStoreKey(wasmtypes.StoreKey),
-		dodxstakingtypes.StoreKey:    storetypes.NewKVStoreKey(dodxstakingtypes.StoreKey),
-		dyncommtypes.StoreKey:        storetypes.NewKVStoreKey(dyncommtypes.StoreKey),
-		mfatypes.StoreKey:            storetypes.NewKVStoreKey(mfatypes.StoreKey),
+		authtypes.StoreKey:             storetypes.NewKVStoreKey(authtypes.StoreKey),
+		banktypes.StoreKey:             storetypes.NewKVStoreKey(banktypes.StoreKey),
+		stakingtypes.StoreKey:          storetypes.NewKVStoreKey(stakingtypes.StoreKey),
+		minttypes.StoreKey:             storetypes.NewKVStoreKey(minttypes.StoreKey),
+		distrtypes.StoreKey:            storetypes.NewKVStoreKey(distrtypes.StoreKey),
+		slashingtypes.StoreKey:         storetypes.NewKVStoreKey(slashingtypes.StoreKey),
+		govtypes.StoreKey:              storetypes.NewKVStoreKey(govtypes.StoreKey),
+		paramstypes.StoreKey:           storetypes.NewKVStoreKey(paramstypes.StoreKey),
+		consensusparamtypes.StoreKey:   storetypes.NewKVStoreKey(consensusparamtypes.StoreKey),
+		upgradetypes.StoreKey:          storetypes.NewKVStoreKey(upgradetypes.StoreKey),
+		feegrant.StoreKey:              storetypes.NewKVStoreKey(feegrant.StoreKey),
+		evidencetypes.StoreKey:         storetypes.NewKVStoreKey(evidencetypes.StoreKey),
+		authzkeeper.StoreKey:           storetypes.NewKVStoreKey(authzkeeper.StoreKey),
+		ibcexported.StoreKey:           storetypes.NewKVStoreKey(ibcexported.StoreKey),
+		ibctransfertypes.StoreKey:      storetypes.NewKVStoreKey(ibctransfertypes.StoreKey),
+		icacontrollertypes.StoreKey:    storetypes.NewKVStoreKey(icacontrollertypes.StoreKey),
+		icahosttypes.StoreKey:          storetypes.NewKVStoreKey(icahosttypes.StoreKey),
+		ibchookstypes.StoreKey:         storetypes.NewKVStoreKey(ibchookstypes.StoreKey),
+		oracletypes.StoreKey:           storetypes.NewKVStoreKey(oracletypes.StoreKey),
+		markettypes.StoreKey:           storetypes.NewKVStoreKey(markettypes.StoreKey),
+		treasurytypes.StoreKey:         storetypes.NewKVStoreKey(treasurytypes.StoreKey),
+		validatorrewardstypes.StoreKey: storetypes.NewKVStoreKey(validatorrewardstypes.StoreKey),
+		wasmtypes.StoreKey:             storetypes.NewKVStoreKey(wasmtypes.StoreKey),
+		dodxstakingtypes.StoreKey:      storetypes.NewKVStoreKey(dodxstakingtypes.StoreKey),
+		dyncommtypes.StoreKey:          storetypes.NewKVStoreKey(dyncommtypes.StoreKey),
+		mfatypes.StoreKey:              storetypes.NewKVStoreKey(mfatypes.StoreKey),
 	}
 	tkeys := map[string]*storetypes.TransientStoreKey{
 		paramstypes.TStoreKey: storetypes.NewTransientStoreKey(paramstypes.TStoreKey),
@@ -349,6 +353,15 @@ func NewAppKeepers(
 		appKeepers.StakingKeeper, appKeepers.DistrKeeper,
 		&appKeepers.WasmKeeper, distrtypes.ModuleName,
 	)
+	appKeepers.ValidatorRewardsKeeper = validatorrewardskeeper.NewKeeper(
+		appCodec,
+		appKeepers.keys[validatorrewardstypes.StoreKey],
+		appKeepers.AccountKeeper,
+		appKeepers.BankKeeper,
+		appKeepers.StakingKeeper,
+		appKeepers.DistrKeeper,
+		authtypes.NewModuleAddress(govtypes.ModuleName).String(),
+	)
 	appKeepers.MFAKeeper = mfakeeper.NewKeeper(
 		appCodec,
 		appKeepers.keys[mfatypes.StoreKey],
@@ -419,6 +432,7 @@ func NewAppKeepers(
 			&appKeepers.MarketKeeper,
 			&appKeepers.OracleKeeper,
 			&appKeepers.TreasuryKeeper,
+			&appKeepers.DODxStakingKeeper,
 		)...,
 	)
 	wasmOpts = append(
@@ -437,6 +451,7 @@ func NewAppKeepers(
 			&appKeepers.MarketKeeper,
 			&appKeepers.OracleKeeper,
 			&appKeepers.TreasuryKeeper,
+			&appKeepers.DODxStakingKeeper,
 		)...,
 	)
 	wasmOpts = append(

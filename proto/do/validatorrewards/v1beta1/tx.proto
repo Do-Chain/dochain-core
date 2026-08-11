@@ -1,0 +1,86 @@
+syntax = "proto3";
+package do.validatorrewards.v1beta1;
+
+import "cosmos/msg/v1/msg.proto";
+import "cosmos/base/v1beta1/coin.proto";
+import "cosmos_proto/cosmos.proto";
+import "do/validatorrewards/v1beta1/rewards.proto";
+import "gogoproto/gogo.proto";
+
+option go_package = "github.com/Daviddochain/dochain-core/v4/x/validatorrewards/types";
+
+// Msg defines validator reward campaign transactions.
+service Msg {
+  // RegisterRewardDenom registers or updates the admin allowed to create
+  // campaigns for a reward denom. It is intended for governance execution.
+  rpc RegisterRewardDenom(MsgRegisterRewardDenom) returns (MsgRegisterRewardDenomResponse);
+
+  // CreateCampaign funds a validator reward campaign for one or more validators.
+  rpc CreateCampaign(MsgCreateCampaign) returns (MsgCreateCampaignResponse);
+
+  // ReleaseCampaign releases vested campaign rewards into x/distribution.
+  rpc ReleaseCampaign(MsgReleaseCampaign) returns (MsgReleaseCampaignResponse);
+
+  // CancelCampaign refunds unreleased campaign rewards to the campaign admin.
+  rpc CancelCampaign(MsgCancelCampaign) returns (MsgCancelCampaignResponse);
+}
+
+message MsgRegisterRewardDenom {
+  option (cosmos.msg.v1.signer)      = "authority";
+  option (gogoproto.equal)           = false;
+  option (gogoproto.goproto_getters) = false;
+
+  string authority = 1 [(cosmos_proto.scalar) = "cosmos.AddressString"];
+  string denom = 2;
+  string admin = 3 [(cosmos_proto.scalar) = "cosmos.AddressString"];
+}
+
+message MsgRegisterRewardDenomResponse {}
+
+message MsgCreateCampaign {
+  option (cosmos.msg.v1.signer)      = "admin";
+  option (gogoproto.equal)           = false;
+  option (gogoproto.goproto_getters) = false;
+
+  string admin = 1 [(cosmos_proto.scalar) = "cosmos.AddressString"];
+  string denom = 2;
+  string title = 3;
+  string description = 4;
+  repeated ValidatorAllocation allocations = 5 [(gogoproto.nullable) = false];
+  int64 start_height = 6;
+  int64 end_height = 7;
+  bool delegators_only = 8;
+}
+
+message MsgCreateCampaignResponse {
+  uint64 campaign_id = 1;
+}
+
+message MsgReleaseCampaign {
+  option (cosmos.msg.v1.signer)      = "releaser";
+  option (gogoproto.equal)           = false;
+  option (gogoproto.goproto_getters) = false;
+
+  string releaser = 1 [(cosmos_proto.scalar) = "cosmos.AddressString"];
+  uint64 campaign_id = 2;
+}
+
+message MsgReleaseCampaignResponse {
+  repeated ValidatorAllocation released = 1 [(gogoproto.nullable) = false];
+}
+
+message MsgCancelCampaign {
+  option (cosmos.msg.v1.signer)      = "admin";
+  option (gogoproto.equal)           = false;
+  option (gogoproto.goproto_getters) = false;
+
+  string admin = 1 [(cosmos_proto.scalar) = "cosmos.AddressString"];
+  uint64 campaign_id = 2;
+}
+
+message MsgCancelCampaignResponse {
+  repeated cosmos.base.v1beta1.Coin refunded = 1 [
+    (gogoproto.nullable)     = false,
+    (gogoproto.castrepeated) = "github.com/cosmos/cosmos-sdk/types.Coins"
+  ];
+}

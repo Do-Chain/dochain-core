@@ -1,0 +1,61 @@
+syntax = "proto3";
+package do.validatorrewards.v1beta1;
+
+import "cosmos/base/query/v1beta1/pagination.proto";
+import "cosmos_proto/cosmos.proto";
+import "do/validatorrewards/v1beta1/rewards.proto";
+
+option go_package = "github.com/Daviddochain/dochain-core/v4/x/validatorrewards/types";
+
+// Query defines validator reward campaign queries for wallets and indexers.
+service Query {
+  rpc RewardDenom(QueryRewardDenomRequest) returns (QueryRewardDenomResponse);
+  rpc RewardDenoms(QueryRewardDenomsRequest) returns (QueryRewardDenomsResponse);
+  rpc Campaign(QueryCampaignRequest) returns (QueryCampaignResponse);
+  rpc Campaigns(QueryCampaignsRequest) returns (QueryCampaignsResponse);
+  rpc ValidatorCampaigns(QueryValidatorCampaignsRequest) returns (QueryValidatorCampaignsResponse);
+}
+
+message QueryRewardDenomRequest {
+  string denom = 1;
+}
+
+message QueryRewardDenomResponse {
+  RewardDenom reward_denom = 1;
+}
+
+message QueryRewardDenomsRequest {
+  cosmos.base.query.v1beta1.PageRequest pagination = 1;
+}
+
+message QueryRewardDenomsResponse {
+  repeated RewardDenom reward_denoms = 1;
+  cosmos.base.query.v1beta1.PageResponse pagination = 2;
+}
+
+message QueryCampaignRequest {
+  uint64 campaign_id = 1;
+}
+
+message QueryCampaignResponse {
+  Campaign campaign = 1;
+}
+
+message QueryCampaignsRequest {
+  cosmos.base.query.v1beta1.PageRequest pagination = 1;
+}
+
+message QueryCampaignsResponse {
+  repeated Campaign campaigns = 1;
+  cosmos.base.query.v1beta1.PageResponse pagination = 2;
+}
+
+message QueryValidatorCampaignsRequest {
+  string validator_address = 1 [(cosmos_proto.scalar) = "cosmos.ValidatorAddressString"];
+  cosmos.base.query.v1beta1.PageRequest pagination = 2;
+}
+
+message QueryValidatorCampaignsResponse {
+  repeated Campaign campaigns = 1;
+  cosmos.base.query.v1beta1.PageResponse pagination = 2;
+}

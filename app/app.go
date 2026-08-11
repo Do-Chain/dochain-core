@@ -33,6 +33,7 @@ import (
 	v16 "github.com/Daviddochain/dochain-core/v4/app/upgrades/v16"
 	v17 "github.com/Daviddochain/dochain-core/v4/app/upgrades/v17"
 	v18 "github.com/Daviddochain/dochain-core/v4/app/upgrades/v18"
+	v19 "github.com/Daviddochain/dochain-core/v4/app/upgrades/v19"
 	v2 "github.com/Daviddochain/dochain-core/v4/app/upgrades/v2"
 	v3 "github.com/Daviddochain/dochain-core/v4/app/upgrades/v3"
 	v4 "github.com/Daviddochain/dochain-core/v4/app/upgrades/v4"
@@ -85,6 +86,7 @@ const (
 	manualV16UpgradeFilename = "manual-v16-upgrade.json"
 	manualV17UpgradeFilename = "manual-v17-upgrade.json"
 	manualV18UpgradeFilename = "manual-v18-upgrade.json"
+	manualV19UpgradeFilename = "manual-v19-upgrade.json"
 )
 
 var (
@@ -116,6 +118,7 @@ var (
 		v16.Upgrade,
 		v17.Upgrade,
 		v18.Upgrade,
+		v19.Upgrade,
 	}
 
 	// Forks defines forks to be applied to the network
@@ -148,6 +151,7 @@ type DoApp struct {
 	manualV16UpgradePlan upgradetypes.Plan
 	manualV17UpgradePlan upgradetypes.Plan
 	manualV18UpgradePlan upgradetypes.Plan
+	manualV19UpgradePlan upgradetypes.Plan
 
 	// the module manager
 	mm *module.Manager
@@ -419,6 +423,9 @@ func (app *DoApp) PreBlocker(ctx sdk.Context, _ *abci.RequestFinalizeBlock) (*sd
 	if err := app.applyManualV18Upgrade(ctx); err != nil {
 		return nil, err
 	}
+	if err := app.applyManualV19Upgrade(ctx); err != nil {
+		return nil, err
+	}
 	return resp, nil
 }
 
@@ -556,6 +563,10 @@ func RegisterSwaggerAPI(rtr *mux.Router) {
 
 	staticServer := http.FileServer(statikFS)
 	swaggerHandler := http.StripPrefix("/swagger/", staticServer)
+	lcdSwaggerHandler := http.StripPrefix("/lcd/swagger/", staticServer)
+	rtr.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
+		http.Redirect(w, r, "/lcd/swagger/", http.StatusFound)
+	}).Methods(http.MethodGet)
 	rtr.PathPrefix("/swagger/").Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		// statik uses a fixed modification time for reproducible assets. Disable
 		// browser caching so a node upgrade cannot leave an older API definition
@@ -564,6 +575,12 @@ func RegisterSwaggerAPI(rtr *mux.Router) {
 		w.Header().Set("Pragma", "no-cache")
 		w.Header().Set("Expires", "0")
 		swaggerHandler.ServeHTTP(w, r)
+	}))
+	rtr.PathPrefix("/lcd/swagger/").Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Cache-Control", "no-cache, no-store, must-revalidate")
+		w.Header().Set("Pragma", "no-cache")
+		w.Header().Set("Expires", "0")
+		lcdSwaggerHandler.ServeHTTP(w, r)
 	}))
 }
 
@@ -616,6 +633,10 @@ func (app *DoApp) applyManualV18Upgrade(ctx sdk.Context) error {
 	return app.applyManualUpgrade(ctx, app.manualV18UpgradePlan)
 }
 
+func (app *DoApp) applyManualV19Upgrade(ctx sdk.Context) error {
+	return app.applyManualUpgrade(ctx, app.manualV19UpgradePlan)
+}
+
 func (app *DoApp) applyManualUpgrade(ctx sdk.Context, plan upgradetypes.Plan) error {
 	if plan.Name == "" || ctx.BlockHeight() != plan.Height {
 		return nil
@@ -642,6 +663,7 @@ func (app *DoApp) readManualUpgradePlans() (upgradetypes.Plan, bool, error) {
 		{manualV16UpgradeFilename, v16.UpgradeName, &app.manualV16UpgradePlan},
 		{manualV17UpgradeFilename, v17.UpgradeName, &app.manualV17UpgradePlan},
 		{manualV18UpgradeFilename, v18.UpgradeName, &app.manualV18UpgradePlan},
+		{manualV19UpgradeFilename, v19.UpgradeName, &app.manualV19UpgradePlan},
 	}
 
 	var selected upgradetypes.Plan
