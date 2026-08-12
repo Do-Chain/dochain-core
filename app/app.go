@@ -37,6 +37,7 @@ import (
 	v2 "github.com/Daviddochain/dochain-core/v4/app/upgrades/v2"
 	v20 "github.com/Daviddochain/dochain-core/v4/app/upgrades/v20"
 	v21 "github.com/Daviddochain/dochain-core/v4/app/upgrades/v21"
+	v22 "github.com/Daviddochain/dochain-core/v4/app/upgrades/v22"
 	v3 "github.com/Daviddochain/dochain-core/v4/app/upgrades/v3"
 	v4 "github.com/Daviddochain/dochain-core/v4/app/upgrades/v4"
 	v5 "github.com/Daviddochain/dochain-core/v4/app/upgrades/v5"
@@ -91,6 +92,7 @@ const (
 	manualV19UpgradeFilename = "manual-v19-upgrade.json"
 	manualV20UpgradeFilename = "manual-v20-upgrade.json"
 	manualV21UpgradeFilename = "manual-v21-upgrade.json"
+	manualV22UpgradeFilename = "manual-v22-upgrade.json"
 )
 
 var (
@@ -125,6 +127,7 @@ var (
 		v19.Upgrade,
 		v20.Upgrade,
 		v21.Upgrade,
+		v22.Upgrade,
 	}
 
 	// Forks defines forks to be applied to the network
@@ -160,6 +163,7 @@ type DoApp struct {
 	manualV19UpgradePlan upgradetypes.Plan
 	manualV20UpgradePlan upgradetypes.Plan
 	manualV21UpgradePlan upgradetypes.Plan
+	manualV22UpgradePlan upgradetypes.Plan
 
 	// the module manager
 	mm *module.Manager
@@ -441,6 +445,9 @@ func (app *DoApp) PreBlocker(ctx sdk.Context, _ *abci.RequestFinalizeBlock) (*sd
 	if err := app.applyManualV21Upgrade(ctx); err != nil {
 		return nil, err
 	}
+	if err := app.applyManualV22Upgrade(ctx); err != nil {
+		return nil, err
+	}
 	return resp, nil
 }
 
@@ -660,6 +667,10 @@ func (app *DoApp) applyManualV21Upgrade(ctx sdk.Context) error {
 	return app.applyManualUpgrade(ctx, app.manualV21UpgradePlan)
 }
 
+func (app *DoApp) applyManualV22Upgrade(ctx sdk.Context) error {
+	return app.applyManualUpgrade(ctx, app.manualV22UpgradePlan)
+}
+
 func (app *DoApp) applyManualUpgrade(ctx sdk.Context, plan upgradetypes.Plan) error {
 	if plan.Name == "" || ctx.BlockHeight() != plan.Height {
 		return nil
@@ -689,6 +700,7 @@ func (app *DoApp) readManualUpgradePlans() (upgradetypes.Plan, bool, error) {
 		{manualV19UpgradeFilename, v19.UpgradeName, &app.manualV19UpgradePlan},
 		{manualV20UpgradeFilename, v20.UpgradeName, &app.manualV20UpgradePlan},
 		{manualV21UpgradeFilename, v21.UpgradeName, &app.manualV21UpgradePlan},
+		{manualV22UpgradeFilename, v22.UpgradeName, &app.manualV22UpgradePlan},
 	}
 
 	var selected upgradetypes.Plan

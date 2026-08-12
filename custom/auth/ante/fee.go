@@ -8,6 +8,7 @@ import (
 	sdkmath "cosmossdk.io/math"
 	"github.com/Daviddochain/dochain-core/v4/app/helper"
 	core "github.com/Daviddochain/dochain-core/v4/types"
+	valuefeetypes "github.com/Daviddochain/dochain-core/v4/x/valuefee/types"
 	sdk "github.com/cosmos/cosmos-sdk/types"
 	sdkerrors "github.com/cosmos/cosmos-sdk/types/errors"
 	"github.com/cosmos/cosmos-sdk/x/auth/ante"
@@ -245,14 +246,14 @@ func (fd FeeDecorator) computeValueSendFee(ctx sdk.Context, msgs []sdk.Msg) (sdk
 	}
 
 	params := fd.valueFeeKeeper.GetParams(ctx)
-	if !params.Enabled || !params.ApplyToMsgSend {
+	if !params.Enabled || !params.ApplyToMsgSend || params.PolicyVersion == 0 {
 		return zero, false, false, nil
 	}
 	if err := params.Validate(); err != nil {
 		return zero, false, false, err
 	}
 
-	totalSent := sdkmath.ZeroInt()
+	totalValue := sdkmath.ZeroInt()
 	eligibleMsgs := 0
 	pureValueSend := len(msgs) > 0
 	for _, msg := range msgs {
@@ -274,15 +275,27 @@ func (fd FeeDecorator) computeValueSendFee(ctx sdk.Context, msgs []sdk.Msg) (sdk
 			continue
 		}
 
-		amount := sendMsg.Amount.AmountOf(params.FeeDenom)
-		if amount.IsZero() {
+		msgHasValueFee := false
+		for _, coin := range sendMsg.Amount {
+			value, known := denomValueInFeeDenom(coin, params)
+			if known {
+				totalValue = totalValue.Add(value)
+				msgHasValueFee = true
+				continue
+			}
+
+			if params.ChargeUnknownDenomMinFee {
+				msgHasValueFee = true
+				continue
+			}
+
+			pureValueSend = false
+		}
+
+		if !msgHasValueFee {
 			pureValueSend = false
 			continue
 		}
-		if sendMsg.Amount.Len() != 1 {
-			pureValueSend = false
-		}
-		totalSent = totalSent.Add(amount)
 		eligibleMsgs++
 	}
 
@@ -290,7 +303,7 @@ func (fd FeeDecorator) computeValueSendFee(ctx sdk.Context, msgs []sdk.Msg) (sdk
 		return zero, false, false, nil
 	}
 
-	feeAmount := totalSent.MulRaw(int64(params.RateBps)).QuoRaw(10_000)
+	feeAmount := totalValue.MulRaw(int64(params.RateBps)).QuoRaw(10_000)
 	if feeAmount.LT(params.MinFee) {
 		feeAmount = params.MinFee
 	}
@@ -299,6 +312,15 @@ func (fd FeeDecorator) computeValueSendFee(ctx sdk.Context, msgs []sdk.Msg) (sdk
 	}
 
 	return sdk.NewCoin(params.FeeDenom, feeAmount), true, pureValueSend, nil
+}
+
+func denomValueInFeeDenom(coin sdk.Coin, params valuefeetypes.Params) (sdkmath.Int, bool) {
+	for _, rate := range params.DenomValueRates {
+		if rate.Denom == coin.Denom {
+			return coin.Amount.Mul(rate.UdoPerBaseUnit), true
+		}
+	}
+	return sdkmath.ZeroInt(), false
 }
 
 func (fd FeeDecorator) isModuleAccount(ctx sdk.Context, addr sdk.AccAddress) bool {

@@ -247,6 +247,153 @@ func (s *AnteTestSuite) TestLargeDirectDoSendUsesRateFee() {
 	s.Require().NoError(err)
 }
 
+func (s *AnteTestSuite) TestDirectDODxSendPaysMinimumFeeInDo() {
+	s.SetupTest(true)
+	s.app.ValueFeeKeeper.SetParams(s.ctx, valuefeetypes.MainnetV22Params())
+
+	priv, _, from := testdata.KeyTestPubAddr()
+	_, _, to := testdata.KeyTestPubAddr()
+	account := s.app.AccountKeeper.NewAccountWithAddress(s.ctx, from)
+	s.app.AccountKeeper.SetAccount(s.ctx, account)
+	s.Require().NoError(banktestutil.FundAccount(
+		s.ctx,
+		s.app.BankKeeper,
+		from,
+		sdk.NewCoins(
+			sdk.NewInt64Coin(core.MicroDoDenom, 2_000_000_000),
+			sdk.NewInt64Coin(core.MicroDODxDenom, 200*core.MicroUnit),
+		),
+	))
+
+	msg := banktypes.NewMsgSend(from, to, sdk.NewCoins(sdk.NewInt64Coin(core.MicroDODxDenom, 100*core.MicroUnit)))
+
+	s.txBuilder = s.clientCtx.TxConfig.NewTxBuilder()
+	s.Require().NoError(s.txBuilder.SetMsgs(msg))
+	s.txBuilder.SetGasLimit(testdata.NewTestGasLimit())
+	s.txBuilder.SetFeeAmount(sdk.NewCoins(sdk.NewInt64Coin(core.MicroDODxDenom, 1_000_000_000)))
+	tx, err := s.CreateTestTx([]cryptotypes.PrivKey{priv}, []uint64{0}, []uint64{0}, s.ctx.ChainID())
+	s.Require().NoError(err)
+	_, err = s.feeHandler()(s.ctx, tx, false)
+	s.Require().Error(err)
+
+	s.txBuilder = s.clientCtx.TxConfig.NewTxBuilder()
+	s.Require().NoError(s.txBuilder.SetMsgs(msg))
+	s.txBuilder.SetGasLimit(testdata.NewTestGasLimit())
+	s.txBuilder.SetFeeAmount(sdk.NewCoins(sdk.NewInt64Coin(core.MicroDoDenom, 1_000_000_000)))
+	tx, err = s.CreateTestTx([]cryptotypes.PrivKey{priv}, []uint64{0}, []uint64{0}, s.ctx.ChainID())
+	s.Require().NoError(err)
+	_, err = s.feeHandler()(s.ctx, tx, false)
+	s.Require().NoError(err)
+}
+
+func (s *AnteTestSuite) TestLargeDirectDODxSendUsesDoValueRateFee() {
+	s.SetupTest(true)
+	s.app.ValueFeeKeeper.SetParams(s.ctx, valuefeetypes.MainnetV22Params())
+
+	priv, _, from := testdata.KeyTestPubAddr()
+	_, _, to := testdata.KeyTestPubAddr()
+	account := s.app.AccountKeeper.NewAccountWithAddress(s.ctx, from)
+	s.app.AccountKeeper.SetAccount(s.ctx, account)
+	s.Require().NoError(banktestutil.FundAccount(
+		s.ctx,
+		s.app.BankKeeper,
+		from,
+		sdk.NewCoins(
+			sdk.NewInt64Coin(core.MicroDoDenom, 2_000_000_000_000),
+			sdk.NewInt64Coin(core.MicroDODxDenom, 10_000_000_000*core.MicroUnit),
+		),
+	))
+
+	msg := banktypes.NewMsgSend(from, to, sdk.NewCoins(sdk.NewInt64Coin(core.MicroDODxDenom, 10_000_000_000*core.MicroUnit)))
+
+	s.txBuilder = s.clientCtx.TxConfig.NewTxBuilder()
+	s.Require().NoError(s.txBuilder.SetMsgs(msg))
+	s.txBuilder.SetGasLimit(testdata.NewTestGasLimit())
+	s.txBuilder.SetFeeAmount(sdk.NewCoins(sdk.NewInt64Coin(core.MicroDoDenom, 999_999_999_999)))
+	tx, err := s.CreateTestTx([]cryptotypes.PrivKey{priv}, []uint64{0}, []uint64{0}, s.ctx.ChainID())
+	s.Require().NoError(err)
+	_, err = s.feeHandler()(s.ctx, tx, false)
+	s.Require().Error(err)
+
+	s.txBuilder = s.clientCtx.TxConfig.NewTxBuilder()
+	s.Require().NoError(s.txBuilder.SetMsgs(msg))
+	s.txBuilder.SetGasLimit(testdata.NewTestGasLimit())
+	s.txBuilder.SetFeeAmount(sdk.NewCoins(sdk.NewInt64Coin(core.MicroDoDenom, 1_000_000_000_000)))
+	tx, err = s.CreateTestTx([]cryptotypes.PrivKey{priv}, []uint64{0}, []uint64{0}, s.ctx.ChainID())
+	s.Require().NoError(err)
+	_, err = s.feeHandler()(s.ctx, tx, false)
+	s.Require().NoError(err)
+}
+
+func (s *AnteTestSuite) TestUnknownDirectCoinSendPaysMinimumDoFeeAfterV22() {
+	s.SetupTest(true)
+	s.app.ValueFeeKeeper.SetParams(s.ctx, valuefeetypes.MainnetV22Params())
+
+	priv, _, from := testdata.KeyTestPubAddr()
+	_, _, to := testdata.KeyTestPubAddr()
+	account := s.app.AccountKeeper.NewAccountWithAddress(s.ctx, from)
+	s.app.AccountKeeper.SetAccount(s.ctx, account)
+	s.Require().NoError(banktestutil.FundAccount(
+		s.ctx,
+		s.app.BankKeeper,
+		from,
+		sdk.NewCoins(
+			sdk.NewInt64Coin(core.MicroDoDenom, 2_000_000_000),
+			sdk.NewInt64Coin("ugame", 1_000_000_000_000),
+		),
+	))
+
+	msg := banktypes.NewMsgSend(from, to, sdk.NewCoins(sdk.NewInt64Coin("ugame", 1_000_000_000_000)))
+
+	s.txBuilder = s.clientCtx.TxConfig.NewTxBuilder()
+	s.Require().NoError(s.txBuilder.SetMsgs(msg))
+	s.txBuilder.SetGasLimit(testdata.NewTestGasLimit())
+	s.txBuilder.SetFeeAmount(sdk.NewCoins(sdk.NewInt64Coin(core.MicroDoDenom, 999_999_999)))
+	tx, err := s.CreateTestTx([]cryptotypes.PrivKey{priv}, []uint64{0}, []uint64{0}, s.ctx.ChainID())
+	s.Require().NoError(err)
+	_, err = s.feeHandler()(s.ctx, tx, false)
+	s.Require().Error(err)
+
+	s.txBuilder = s.clientCtx.TxConfig.NewTxBuilder()
+	s.Require().NoError(s.txBuilder.SetMsgs(msg))
+	s.txBuilder.SetGasLimit(testdata.NewTestGasLimit())
+	s.txBuilder.SetFeeAmount(sdk.NewCoins(sdk.NewInt64Coin(core.MicroDoDenom, 1_000_000_000)))
+	tx, err = s.CreateTestTx([]cryptotypes.PrivKey{priv}, []uint64{0}, []uint64{0}, s.ctx.ChainID())
+	s.Require().NoError(err)
+	_, err = s.feeHandler()(s.ctx, tx, false)
+	s.Require().NoError(err)
+}
+
+func (s *AnteTestSuite) TestUnknownDirectCoinSendKeepsNormalGasBeforeV22() {
+	s.SetupTest(true)
+	s.app.ValueFeeKeeper.SetParams(s.ctx, valuefeetypes.MainnetV21Params())
+
+	priv, _, from := testdata.KeyTestPubAddr()
+	_, _, to := testdata.KeyTestPubAddr()
+	account := s.app.AccountKeeper.NewAccountWithAddress(s.ctx, from)
+	s.app.AccountKeeper.SetAccount(s.ctx, account)
+	s.Require().NoError(banktestutil.FundAccount(
+		s.ctx,
+		s.app.BankKeeper,
+		from,
+		sdk.NewCoins(
+			sdk.NewInt64Coin(core.MicroDoDenom, 10_000),
+			sdk.NewInt64Coin("ugame", 1_000_000),
+		),
+	))
+
+	msg := banktypes.NewMsgSend(from, to, sdk.NewCoins(sdk.NewInt64Coin("ugame", 1_000_000)))
+
+	s.txBuilder = s.clientCtx.TxConfig.NewTxBuilder()
+	s.Require().NoError(s.txBuilder.SetMsgs(msg))
+	s.txBuilder.SetGasLimit(1000)
+	s.txBuilder.SetFeeAmount(sdk.NewCoins(sdk.NewInt64Coin(core.MicroDoDenom, 1000)))
+	tx, err := s.CreateTestTx([]cryptotypes.PrivKey{priv}, []uint64{0}, []uint64{0}, s.ctx.ChainID())
+	s.Require().NoError(err)
+	_, err = s.feeHandler()(s.ctx.WithMinGasPrices(sdk.NewDecCoins(sdk.NewDecCoin(core.MicroDoDenom, sdkmath.OneInt()))), tx, false)
+	s.Require().NoError(err)
+}
+
 func (s *AnteTestSuite) TestValueFeeDoesNotApplyToGovernanceOrStaking() {
 	s.SetupTest(true)
 	s.app.ValueFeeKeeper.SetParams(s.ctx, valuefeetypes.MainnetV21Params())
