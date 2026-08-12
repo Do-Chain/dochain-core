@@ -4,6 +4,7 @@ import (
 	"context"
 
 	sdkmath "cosmossdk.io/math"
+	valuefeetypes "github.com/Daviddochain/dochain-core/v4/x/valuefee/types"
 	sdk "github.com/cosmos/cosmos-sdk/types"
 	govv1 "github.com/cosmos/cosmos-sdk/x/gov/types/v1"
 )
@@ -39,4 +40,8 @@ type DistrKeeper interface {
 
 type GovKeeper interface {
 	GetDepositParams(ctx sdk.Context) govv1.DepositParams
+}
+
+type ValueFeeKeeper interface {
+	GetParams(ctx sdk.Context) valuefeetypes.Params
 }

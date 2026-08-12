@@ -7,6 +7,8 @@ import (
 	wasmkeeper "github.com/CosmWasm/wasmd/x/wasm/keeper"
 	wasmvmtypes "github.com/CosmWasm/wasmvm/v3/types"
 	"github.com/Daviddochain/dochain-core/v4/wasmbinding/bindings"
+	dodxstakingkeeper "github.com/Daviddochain/dochain-core/v4/x/dodxstaking/keeper"
+	dodxstakingtypes "github.com/Daviddochain/dochain-core/v4/x/dodxstaking/types"
 	marketkeeper "github.com/Daviddochain/dochain-core/v4/x/market/keeper"
 	markettypes "github.com/Daviddochain/dochain-core/v4/x/market/types"
 	codectypes "github.com/cosmos/cosmos-sdk/codec/types"
@@ -14,18 +16,23 @@ import (
 )
 
 // CustomMessageDecorator returns decorator for custom CosmWasm bindings messages
-func CustomMessageDecorator(market *marketkeeper.Keeper) func(wasmkeeper.Messenger) wasmkeeper.Messenger {
+func CustomMessageDecorator(
+	market *marketkeeper.Keeper,
+	dodxStaking *dodxstakingkeeper.Keeper,
+) func(wasmkeeper.Messenger) wasmkeeper.Messenger {
 	return func(old wasmkeeper.Messenger) wasmkeeper.Messenger {
 		return &CustomMessenger{
-			wrapped:      old,
-			marketKeeper: market,
+			wrapped:           old,
+			marketKeeper:      market,
+			dodxStakingKeeper: dodxStaking,
 		}
 	}
 }
 
 type CustomMessenger struct {
-	wrapped      wasmkeeper.Messenger
-	marketKeeper *marketkeeper.Keeper
+	wrapped           wasmkeeper.Messenger
+	marketKeeper      *marketkeeper.Keeper
+	dodxStakingKeeper *dodxstakingkeeper.Keeper
 }
 
 var _ wasmkeeper.Messenger = (*CustomMessenger)(nil)
@@ -53,11 +60,51 @@ func (m *CustomMessenger) DispatchMsg(ctx sdk.Context, contractAddr sdk.AccAddre
 			}
 			return nil, bz, nil, nil
 
+		case contractMsg.DepositDodxRewards != nil:
+			_, bz, err := m.depositDodxRewards(ctx, contractAddr, contractMsg.DepositDodxRewards)
+			if err != nil {
+				return nil, nil, nil, errorsmod.Wrap(err, "deposit dodx rewards msg failed")
+			}
+			return nil, bz, nil, nil
+
 		default:
 			return nil, nil, nil, wasmvmtypes.UnsupportedRequest{Kind: "unknown do msg variant"}
 		}
 	}
 	return m.wrapped.DispatchMsg(ctx, contractAddr, contractIBCPortID, msg)
+}
+
+// depositDodxRewards lets a contract deposit its native DEX reward fees into
+// x/dodxstaking reward accounting without an off-chain hot-wallet signer.
+func (m *CustomMessenger) depositDodxRewards(
+	ctx sdk.Context,
+	contractAddr sdk.AccAddress,
+	contractMsg *bindings.DepositDodxRewards,
+) ([]sdk.Event, [][]byte, error) {
+	if contractMsg == nil {
+		return nil, nil, wasmvmtypes.InvalidRequest{Err: "deposit dodx rewards msg was null"}
+	}
+	if m.dodxStakingKeeper == nil {
+		return nil, nil, wasmvmtypes.UnsupportedRequest{Kind: "dodx staking keeper unavailable"}
+	}
+
+	msg := dodxstakingtypes.NewMsgDepositRewards(contractAddr, contractMsg.Amount)
+	if err := msg.ValidateBasic(); err != nil {
+		return nil, nil, errorsmod.Wrap(err, "failed validating MsgDepositRewards")
+	}
+
+	msgSvr := dodxstakingkeeper.NewMsgServerImpl(*m.dodxStakingKeeper)
+	res, err := msgSvr.DepositRewards(sdk.WrapSDKContext(ctx), msg)
+	if err != nil {
+		return nil, nil, errorsmod.Wrap(err, "depositing dodx rewards")
+	}
+
+	bz, err := json.Marshal(res)
+	if err != nil {
+		return nil, nil, errorsmod.Wrap(err, "error marshal deposit dodx rewards response")
+	}
+
+	return nil, [][]byte{bz}, nil
 }
 
 // swap wraps around performing market swap
@@ -144,9 +191,3 @@ func PerformSwapSend(f *marketkeeper.Keeper, ctx sdk.Context, contractAddr sdk.A
 	}
 	return res, nil
 }
-
-
-
-
-
-

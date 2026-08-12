@@ -27,6 +27,7 @@ type HandlerOptions struct {
 	FeegrantKeeper         ante.FeegrantKeeper
 	OracleKeeper           OracleKeeper
 	TreasuryKeeper         TreasuryKeeper
+	ValueFeeKeeper         ValueFeeKeeper
 	SignModeHandler        *txsigning.HandlerMap
 	SigGasConsumer         ante.SignatureVerificationGasConsumer
 	TxFeeChecker           ante.TxFeeChecker
@@ -85,7 +86,7 @@ func NewAnteHandler(options HandlerOptions) (sdk.AnteHandler, error) {
 		NewMinInitialDepositDecorator(options.GovKeeper, options.TreasuryKeeper),
 		mfaante.NewMFARequirementDecorator(options.Cdc, options.AccountKeeper, options.MFAKeeper),
 		ante.NewConsumeGasForTxSizeDecorator(options.AccountKeeper),
-		NewFeeDecorator(options.AccountKeeper, options.BankKeeper, options.FeegrantKeeper, options.TreasuryKeeper, options.DistributionKeeper),
+		NewFeeDecorator(options.AccountKeeper, options.BankKeeper, options.FeegrantKeeper, options.TreasuryKeeper, options.DistributionKeeper, options.ValueFeeKeeper),
 		dyncommante.NewDyncommDecorator(options.Cdc, options.DyncommKeeper, options.StakingKeeper),
 		ante.NewSetPubKeyDecorator(options.AccountKeeper),
 		ante.NewValidateSigCountDecorator(options.AccountKeeper),

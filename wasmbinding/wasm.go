@@ -4,6 +4,7 @@ import (
 	storetypes "cosmossdk.io/store/types"
 	wasmkeeper "github.com/CosmWasm/wasmd/x/wasm/keeper"
 	customwasm "github.com/Daviddochain/dochain-core/v4/custom/wasm"
+	dodxstakingkeeper "github.com/Daviddochain/dochain-core/v4/x/dodxstaking/keeper"
 	marketkeeper "github.com/Daviddochain/dochain-core/v4/x/market/keeper"
 	markettypes "github.com/Daviddochain/dochain-core/v4/x/market/types"
 	oraclekeeper "github.com/Daviddochain/dochain-core/v4/x/oracle/keeper"
@@ -17,6 +18,7 @@ func RegisterCustomPlugins(
 	marketKeeper *marketkeeper.Keeper,
 	oracleKeeper *oraclekeeper.Keeper,
 	treasuryKeeper *treasurykeeper.Keeper,
+	dodxStakingKeeper *dodxstakingkeeper.Keeper,
 ) []wasmkeeper.Option {
 	wasmQueryPlugin := NewQueryPlugin(
 		marketKeeper,
@@ -28,7 +30,7 @@ func RegisterCustomPlugins(
 		Custom: CustomQuerier(wasmQueryPlugin),
 	})
 	messengerDecoratorOpt := wasmkeeper.WithMessageHandlerDecorator(
-		CustomMessageDecorator(marketKeeper),
+		CustomMessageDecorator(marketKeeper, dodxStakingKeeper),
 	)
 
 	return []wasmkeeper.Option{

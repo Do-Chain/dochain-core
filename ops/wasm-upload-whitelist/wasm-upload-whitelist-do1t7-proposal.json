@@ -1,0 +1,21 @@
+{
+  "messages": [
+    {
+      "@type": "/cosmwasm.wasm.v1.MsgUpdateParams",
+      "authority": "do10d07y265gmmuvt4z0w9aw880jnsr700jslsmp2",
+      "params": {
+        "code_upload_access": {
+          "permission": "ACCESS_TYPE_ANY_OF_ADDRESSES",
+          "addresses": [
+            "do1t7rnyus7q3667txrwexcrgkjpr5rwm8z0qaycg"
+          ]
+        },
+        "instantiate_default_permission": "ACCESS_TYPE_NOBODY"
+      }
+    }
+  ],
+  "metadata": "",
+  "deposit": "1000000udodx",
+  "title": "Whitelist DODEX factory admin for CosmWasm uploads",
+  "summary": "Set x/wasm code upload access to AnyOfAddresses for do1t7rnyus7q3667txrwexcrgkjpr5rwm8z0qaycg while keeping instantiate_default_permission as Nobody. This avoids broad Everybody upload access and allows the controlled DODEX admin wallet to reupload the DEX pair and LP code with explicit instantiate permissions."
+}

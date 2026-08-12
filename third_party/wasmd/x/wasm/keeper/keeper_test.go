@@ -230,8 +230,8 @@ func TestCreateWithParamPermissions(t *testing.T) {
 	}
 }
 
-// ensure that the user cannot set the code instantiate permission to something more permissive
-// than the default
+// ensure that an authorized uploader can set code-specific instantiate permissions
+// while omitted permissions still fall back to the default
 func TestEnforceValidPermissionsOnCreate(t *testing.T) {
 	ctx, keepers := CreateTestInput(t, false, AvailableCapabilities)
 	keeper := keepers.WasmKeeper
@@ -267,10 +267,10 @@ func TestEnforceValidPermissionsOnCreate(t *testing.T) {
 			requestedPermission: &types.AccessConfig{Permission: types.AccessTypeEverybody},
 			grantedPermission:   types.AccessConfig{Permission: types.AccessTypeEverybody},
 		},
-		"cannot override nobody": {
+		"can override nobody": {
 			defaultPermission:   types.AccessTypeNobody,
 			requestedPermission: &onlyCreator,
-			expError:            sdkerrors.ErrUnauthorized,
+			grantedPermission:   onlyCreator,
 		},
 		"default to nobody": {
 			defaultPermission:   types.AccessTypeNobody,
@@ -287,10 +287,10 @@ func TestEnforceValidPermissionsOnCreate(t *testing.T) {
 			requestedPermission: &onlyCreator,
 			grantedPermission:   onlyCreator,
 		},
-		"cannot override which address in only": {
+		"can override which address in only": {
 			defaultPermission:   types.AccessTypeAnyOfAddresses,
 			requestedPermission: &onlyOther,
-			expError:            sdkerrors.ErrUnauthorized,
+			grantedPermission:   onlyOther,
 		},
 	}
 	for msg, spec := range specs {

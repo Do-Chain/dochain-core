@@ -5,8 +5,9 @@ import (
 )
 
 type DoMsg struct {
-	Swap     *Swap     `json:"swap,omitempty"`
-	SwapSend *SwapSend `json:"swap_send,omitempty"`
+	Swap               *Swap               `json:"swap,omitempty"`
+	SwapSend           *SwapSend           `json:"swap_send,omitempty"`
+	DepositDodxRewards *DepositDodxRewards `json:"deposit_dodx_rewards,omitempty"`
 }
 
 type Swap struct {
@@ -20,8 +21,6 @@ type SwapSend struct {
 	AskDenom  string   `json:"ask_denom"`
 }
 
-
-
-
-
-
+type DepositDodxRewards struct {
+	Amount sdk.Coins `json:"amount"`
+}

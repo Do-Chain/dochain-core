@@ -11,8 +11,7 @@ var _ types.AuthorizationPolicy = DefaultAuthorizationPolicy{}
 type DefaultAuthorizationPolicy struct{}
 
 func (p DefaultAuthorizationPolicy) CanCreateCode(chainConfigs types.ChainAccessConfigs, actor sdk.AccAddress, contractConfig types.AccessConfig) bool {
-	return chainConfigs.Upload.Allowed(actor) &&
-		contractConfig.IsSubset(chainConfigs.Instantiate)
+	return chainConfigs.Upload.Allowed(actor)
 }
 
 func (p DefaultAuthorizationPolicy) CanInstantiateContract(config types.AccessConfig, actor sdk.AccAddress) bool {

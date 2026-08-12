@@ -1,4 +1,4 @@
-# v18 Wasm Security Upgrade Runbook
+# v18 Wasm Security And DODx Rewards Upgrade Runbook
 
 This is a consensus software upgrade for the live `Do-Chain` network. It must
 not be activated until the same verified Linux binary and manual plan are
@@ -6,10 +6,18 @@ staged on every validator.
 
 ## Scope
 
-At the `v18` activation height, the upgrade changes only these Wasm defaults:
+At the `v18` activation height, the upgrade changes these Wasm defaults:
 
 - `code_upload_access.permission`: `Everybody` to `Nobody`
 - `instantiate_default_permission`: `Everybody` to `Nobody`
+
+It also enables the native DEX-to-DODx-stakers reward path:
+
+- enables `x/dodxstaking` reward accounting
+- registers `udo` as the reward denom for DODx stakers
+- syncs any existing module-account `udo` balance once at activation
+- after activation, BeginBlock keeps syncing new `udo` sent to the DODx staking
+  module account
 
 Existing uploaded code and instantiated contracts remain available. The
 upgrade does not delete code, migrate stores, or modify contract state.
@@ -17,7 +25,6 @@ upgrade does not delete code, migrate stores, or modify contract state.
 The upgrade does not change:
 
 - DODX staking or its one-to-one governance voting power
-- DO rewards paid to DODX stakers
 - DO validator staking, gas, fees, or distribution rewards
 - governance quorum, veto, deposits, or voting periods
 - oracle or Cosmos slashing parameters
@@ -68,11 +75,72 @@ The manual plan file is `<node-home>/data/manual-v18-upgrade.json`:
 {
   "name": "v18",
   "height": <HEIGHT>,
-  "info": "Do-Chain v18 Wasm permission hardening"
+  "info": "Do-Chain v18 Wasm permission hardening and native DODx staking rewards"
 }
 ```
 
 The name must be exactly `v18`, and every validator must use the same height.
+
+## Governance Proposal Template
+
+This proposal can be submitted from any machine with:
+
+- `dochaind`
+- the proposer key loaded
+- enough DODx for the proposal deposit
+- enough DO for gas
+- RPC access to a synced node
+
+The signer address does not need to be on the chain server. For the wallet
+`do1gw39atpxnn6n2un7msagqgj5p7yg7xumgyzpzh`, use the local key name that
+resolves to that address as `FROM`.
+
+Set `UPGRADE_HEIGHT` far enough in the future for every validator to stage the
+same binary and manual plan.
+
+```bash
+export CHAIN_ID=Do-Chain
+export NODE=http://178.63.79.250:26657
+export FROM=<key-name-for-do1gw39atpxnn6n2un7msagqgj5p7yg7xumgyzpzh>
+export KEYRING_BACKEND=test
+export UPGRADE_HEIGHT=<chosen-height>
+
+GOV_AUTHORITY="$(dochaind q auth module-account gov \
+  --node "$NODE" \
+  --output json \
+  | jq -r '.account.value.address // .account.base_account.address // .account.address')"
+
+cat > v18-upgrade-proposal.json <<EOF
+{
+  "messages": [
+    {
+      "@type": "/cosmos.upgrade.v1beta1.MsgSoftwareUpgrade",
+      "authority": "$GOV_AUTHORITY",
+      "plan": {
+        "name": "v18",
+        "height": "$UPGRADE_HEIGHT",
+        "info": "Do-Chain v18 Wasm permission hardening and native DODx staking rewards"
+      }
+    }
+  ],
+  "deposit": "20000000udodx",
+  "title": "v18 Wasm security and native DODx rewards",
+  "summary": "Closes permissionless Wasm upload/default instantiation and enables automatic udo reward accounting for DODx stakers.",
+  "metadata": "",
+  "expedited": false
+}
+EOF
+
+dochaind tx gov submit-proposal v18-upgrade-proposal.json \
+  --from "$FROM" \
+  --keyring-backend "$KEYRING_BACKEND" \
+  --chain-id "$CHAIN_ID" \
+  --node "$NODE" \
+  --gas auto \
+  --gas-adjustment 1.5 \
+  --fees 100000udo \
+  -y
+```
 
 ## Activation
 
@@ -93,9 +161,28 @@ dochaind query upgrade applied v18 --home <node-home>
 dochaind query wasm params --node tcp://127.0.0.1:26657 --output json
 ```
 
-8. Confirm DODX stake totals, a sample DODX governance-power query, DO reward
-   claims, validator status, oracle voting, RPC, LCD, and block production.
+8. Confirm DODX stake totals, a sample DODX governance-power query, DODx staking
+   reward-pool behavior, validator status, oracle voting, RPC, LCD, and block
+   production.
 9. Compare all non-Wasm parameter exports with the pre-activation copies.
+
+## DEX Reward Switch After v18
+
+After `v18` is applied, point the DEX reward-fee leg at the DODx staking module
+account:
+
+```bash
+export DODX_STAKING_REWARDS_MODULE=do1jfyzpxgccjp9r2ytlxv748fnnqempalp2wewkf
+```
+
+When applying the DEX split/migration, use:
+
+```bash
+REWARD_DISTRIBUTOR=do1jfyzpxgccjp9r2ytlxv748fnnqempalp2wewkf
+```
+
+No reward hot wallet and no `execute {"deposit_rewards":{}}` keeper are needed
+for this native route.
 
 ## Rollback
 
@@ -114,6 +201,7 @@ The rollout is complete only when:
 - `v18` is recorded as applied at the agreed height
 - the chain produces finalized blocks without validator divergence
 - both Wasm permissions are `Nobody`
-- DODX governance and DO rewards behave as before
+- DODX governance behaves as before
+- DODx staking rewards account incoming `udo` sent to the module account
 - all other exported parameters match their pre-upgrade values
 - RPC, LCD, oracle feeders, redemption monitoring, and DEX health checks pass

@@ -15,9 +15,14 @@ func TestEmbeddedSwaggerUsesDoChainBranding(t *testing.T) {
 		t.Fatalf("load embedded Swagger assets: %v", err)
 	}
 
-	for path, expected := range map[string]string{
-		"/index.html":         `href="do-chain-theme.css"`,
-		"/do-chain-theme.css": "--do-accent: #a855f7",
+	for path, expectedSnippets := range map[string][]string{
+		"/index.html": {
+			`href="do-chain-theme.css"`,
+			`url: "swagger.yaml?v=do-chain-lcd"`,
+		},
+		"/do-chain-theme.css": {
+			"--do-accent: #a855f7",
+		},
 	} {
 		asset, err := assets.Open(path)
 		if err != nil {
@@ -28,8 +33,11 @@ func TestEmbeddedSwaggerUsesDoChainBranding(t *testing.T) {
 		if err != nil {
 			t.Fatalf("read embedded %s: %v", path, err)
 		}
-		if !strings.Contains(string(contents), expected) {
-			t.Fatalf("embedded %s is missing %q", path, expected)
+		document := string(contents)
+		for _, expected := range expectedSnippets {
+			if !strings.Contains(document, expected) {
+				t.Fatalf("embedded %s is missing %q", path, expected)
+			}
 		}
 	}
 
@@ -46,8 +54,10 @@ func TestEmbeddedSwaggerUsesDoChainBranding(t *testing.T) {
 
 	document := string(contents)
 	for _, expected := range []string{
-		"title: Do-Chain - gRPC Gateway docs",
-		"description: REST interface for Do-Chain",
+		"title: Do-Chain LCD / REST API docs",
+		"description: Public LCD REST interface for Do-Chain",
+		"host: do-chain.com",
+		"basePath: /lcd",
 	} {
 		if !strings.Contains(document, expected) {
 			t.Fatalf("embedded swagger.yaml is missing %q", expected)

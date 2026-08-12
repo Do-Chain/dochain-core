@@ -7,11 +7,13 @@ import (
 	errorsmod "cosmossdk.io/errors"
 	sdkmath "cosmossdk.io/math"
 	"github.com/Daviddochain/dochain-core/v4/app/helper"
+	core "github.com/Daviddochain/dochain-core/v4/types"
 	sdk "github.com/cosmos/cosmos-sdk/types"
 	sdkerrors "github.com/cosmos/cosmos-sdk/types/errors"
 	"github.com/cosmos/cosmos-sdk/x/auth/ante"
 	authsigning "github.com/cosmos/cosmos-sdk/x/auth/signing"
 	"github.com/cosmos/cosmos-sdk/x/auth/types"
+	banktypes "github.com/cosmos/cosmos-sdk/x/bank/types"
 )
 
 type FeeDecorator struct {
@@ -20,15 +22,17 @@ type FeeDecorator struct {
 	feegrantKeeper ante.FeegrantKeeper
 	treasuryKeeper TreasuryKeeper
 	distrKeeper    DistrKeeper
+	valueFeeKeeper ValueFeeKeeper
 }
 
-func NewFeeDecorator(ak ante.AccountKeeper, bk BankKeeper, fk ante.FeegrantKeeper, tk TreasuryKeeper, dk DistrKeeper) FeeDecorator {
+func NewFeeDecorator(ak ante.AccountKeeper, bk BankKeeper, fk ante.FeegrantKeeper, tk TreasuryKeeper, dk DistrKeeper, vk ValueFeeKeeper) FeeDecorator {
 	return FeeDecorator{
 		accountKeeper:  ak,
 		bankKeeper:     bk,
 		feegrantKeeper: fk,
 		treasuryKeeper: tk,
 		distrKeeper:    dk,
+		valueFeeKeeper: vk,
 	}
 }
 
@@ -155,25 +159,23 @@ func (fd FeeDecorator) checkTxFee(ctx sdk.Context, tx sdk.Tx, taxes sdk.Coins, n
 	gas := feeTx.GetGas()
 	msgs := feeTx.GetMsgs()
 	isOracleTx := helper.IsOracleTx(msgs)
+	valueFee, hasValueFee, pureValueSend, err := fd.computeValueSendFee(ctx, msgs)
+	if err != nil {
+		return 0, false, false, err
+	}
 
 	if !isOracleTx {
-		minGasPrices := ctx.MinGasPrices()
-		if !minGasPrices.IsZero() {
-			requiredFees := make(sdk.Coins, len(minGasPrices))
-			glDec := sdkmath.LegacyNewDec(int64(gas))
-
-			for i, gp := range minGasPrices {
-				fee := gp.Amount.Mul(glDec)
-				requiredFees[i] = sdk.NewCoin(gp.Denom, fee.Ceil().RoundInt())
+		requiredGasFees := requiredGasFees(ctx, gas)
+		if !pureValueSend {
+			if err := checkRequiredGasAndValueFees(feeCoins, requiredGasFees, valueFee, hasValueFee); err != nil {
+				return 0, false, false, err
 			}
-
-			if !feeCoins.IsAnyGTE(requiredFees) {
-				return 0, false, false, errorsmod.Wrapf(
-					sdkerrors.ErrInsufficientFee,
-					"insufficient fee; got: %s required: %s",
-					feeCoins, requiredFees,
-				)
-			}
+		} else if hasValueFee && !feeCoins.IsAllGTE(sdk.NewCoins(valueFee)) {
+			return 0, false, false, errorsmod.Wrapf(
+				sdkerrors.ErrInsufficientFee,
+				"insufficient fee; got: %s required: %s",
+				feeCoins, sdk.NewCoins(valueFee),
+			)
 		}
 	}
 
@@ -186,4 +188,124 @@ func (fd FeeDecorator) checkTxFee(ctx sdk.Context, tx sdk.Tx, taxes sdk.Coins, n
 	}
 
 	return priority, false, false, nil
+}
+
+func requiredGasFees(ctx sdk.Context, gas uint64) sdk.Coins {
+	minGasPrices := ctx.MinGasPrices()
+	if minGasPrices.IsZero() {
+		return sdk.NewCoins()
+	}
+
+	requiredFees := make(sdk.Coins, len(minGasPrices))
+	glDec := sdkmath.LegacyNewDec(int64(gas))
+	for i, gp := range minGasPrices {
+		fee := gp.Amount.Mul(glDec)
+		requiredFees[i] = sdk.NewCoin(gp.Denom, fee.Ceil().RoundInt())
+	}
+	return requiredFees.Sort()
+}
+
+func checkRequiredGasAndValueFees(feeCoins, gasFees sdk.Coins, valueFee sdk.Coin, hasValueFee bool) error {
+	if gasFees.IsZero() {
+		if !hasValueFee || feeCoins.IsAllGTE(sdk.NewCoins(valueFee)) {
+			return nil
+		}
+		return errorsmod.Wrapf(
+			sdkerrors.ErrInsufficientFee,
+			"insufficient fee; got: %s required: %s",
+			feeCoins, sdk.NewCoins(valueFee),
+		)
+	}
+
+	for _, gasFee := range gasFees {
+		required := sdk.NewCoins(gasFee)
+		if hasValueFee {
+			required = required.Add(valueFee)
+		}
+		if feeCoins.IsAllGTE(required) {
+			return nil
+		}
+	}
+
+	required := gasFees
+	if hasValueFee {
+		required = required.Add(valueFee)
+	}
+	return errorsmod.Wrapf(
+		sdkerrors.ErrInsufficientFee,
+		"insufficient fee; got: %s required: %s",
+		feeCoins, required,
+	)
+}
+
+func (fd FeeDecorator) computeValueSendFee(ctx sdk.Context, msgs []sdk.Msg) (sdk.Coin, bool, bool, error) {
+	zero := sdk.NewCoin(core.MicroDoDenom, sdkmath.ZeroInt())
+	if fd.valueFeeKeeper == nil {
+		return zero, false, false, nil
+	}
+
+	params := fd.valueFeeKeeper.GetParams(ctx)
+	if !params.Enabled || !params.ApplyToMsgSend {
+		return zero, false, false, nil
+	}
+	if err := params.Validate(); err != nil {
+		return zero, false, false, err
+	}
+
+	totalSent := sdkmath.ZeroInt()
+	eligibleMsgs := 0
+	pureValueSend := len(msgs) > 0
+	for _, msg := range msgs {
+		sendMsg, ok := msg.(*banktypes.MsgSend)
+		if !ok {
+			pureValueSend = false
+			continue
+		}
+		fromAddr, err := sdk.AccAddressFromBech32(sendMsg.FromAddress)
+		if err != nil {
+			return zero, false, false, err
+		}
+		toAddr, err := sdk.AccAddressFromBech32(sendMsg.ToAddress)
+		if err != nil {
+			return zero, false, false, err
+		}
+		if fd.isModuleAccount(ctx, fromAddr) || fd.isModuleAccount(ctx, toAddr) {
+			pureValueSend = false
+			continue
+		}
+
+		amount := sendMsg.Amount.AmountOf(params.FeeDenom)
+		if amount.IsZero() {
+			pureValueSend = false
+			continue
+		}
+		if sendMsg.Amount.Len() != 1 {
+			pureValueSend = false
+		}
+		totalSent = totalSent.Add(amount)
+		eligibleMsgs++
+	}
+
+	if eligibleMsgs == 0 {
+		return zero, false, false, nil
+	}
+
+	feeAmount := totalSent.MulRaw(int64(params.RateBps)).QuoRaw(10_000)
+	if feeAmount.LT(params.MinFee) {
+		feeAmount = params.MinFee
+	}
+	if params.MaxFeeEnabled && feeAmount.GT(params.MaxFee) {
+		feeAmount = params.MaxFee
+	}
+
+	return sdk.NewCoin(params.FeeDenom, feeAmount), true, pureValueSend, nil
+}
+
+func (fd FeeDecorator) isModuleAccount(ctx sdk.Context, addr sdk.AccAddress) bool {
+	acc := fd.accountKeeper.GetAccount(ctx, addr)
+	if acc == nil {
+		return false
+	}
+	_, ok := acc.(types.ModuleAccountI)
+	return ok
 }

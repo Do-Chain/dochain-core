@@ -1,0 +1,7 @@
+{
+  "@type": "/cosmwasm.wasm.v1.MsgAddCodeUploadParamsAddresses",
+  "authority": "do10d07y265gmmuvt4z0w9aw880jnsr700jslsmp2",
+  "addresses": [
+    "do1t7rnyus7q3667txrwexcrgkjpr5rwm8z0qaycg"
+  ]
+}

@@ -32,6 +32,8 @@ import (
 	treasurytypes "github.com/Daviddochain/dochain-core/v4/x/treasury/types"
 	validatorrewardskeeper "github.com/Daviddochain/dochain-core/v4/x/validatorrewards/keeper"
 	validatorrewardstypes "github.com/Daviddochain/dochain-core/v4/x/validatorrewards/types"
+	valuefeekeeper "github.com/Daviddochain/dochain-core/v4/x/valuefee/keeper"
+	valuefeetypes "github.com/Daviddochain/dochain-core/v4/x/valuefee/types"
 	"github.com/cosmos/cosmos-sdk/baseapp"
 	"github.com/cosmos/cosmos-sdk/codec"
 	"github.com/cosmos/cosmos-sdk/codec/address"
@@ -102,6 +104,7 @@ type AppKeepers struct {
 	MarketKeeper           marketkeeper.Keeper
 	TreasuryKeeper         treasurykeeper.Keeper
 	ValidatorRewardsKeeper validatorrewardskeeper.Keeper
+	ValueFeeKeeper         valuefeekeeper.Keeper
 	WasmKeeper             wasmkeeper.Keeper
 	DODxStakingKeeper      dodxstakingkeeper.Keeper
 	DyncommKeeper          dyncommkeeper.Keeper
@@ -362,6 +365,9 @@ func NewAppKeepers(
 		appKeepers.DistrKeeper,
 		authtypes.NewModuleAddress(govtypes.ModuleName).String(),
 	)
+	appKeepers.ValueFeeKeeper = valuefeekeeper.NewKeeper(
+		appKeepers.GetSubspace(valuefeetypes.ModuleName),
+	)
 	appKeepers.MFAKeeper = mfakeeper.NewKeeper(
 		appCodec,
 		appKeepers.keys[mfatypes.StoreKey],
@@ -432,6 +438,7 @@ func NewAppKeepers(
 			&appKeepers.MarketKeeper,
 			&appKeepers.OracleKeeper,
 			&appKeepers.TreasuryKeeper,
+			&appKeepers.DODxStakingKeeper,
 		)...,
 	)
 	wasmOpts = append(
@@ -450,6 +457,7 @@ func NewAppKeepers(
 			&appKeepers.MarketKeeper,
 			&appKeepers.OracleKeeper,
 			&appKeepers.TreasuryKeeper,
+			&appKeepers.DODxStakingKeeper,
 		)...,
 	)
 	wasmOpts = append(
@@ -574,6 +582,7 @@ func initParamsKeeper(
 	paramsKeeper.Subspace(markettypes.ModuleName)
 	paramsKeeper.Subspace(oracletypes.ModuleName)
 	paramsKeeper.Subspace(treasurytypes.ModuleName)
+	paramsKeeper.Subspace(valuefeetypes.ModuleName).WithKeyTable(valuefeetypes.ParamKeyTable())
 	paramsKeeper.Subspace(wasmtypes.ModuleName)
 	paramsKeeper.Subspace(dyncommtypes.ModuleName)
 

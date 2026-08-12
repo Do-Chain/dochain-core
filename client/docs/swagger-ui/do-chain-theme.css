@@ -144,7 +144,7 @@ body {
 }
 
 .swagger-ui .topbar a.link::after {
-  content: "Do-Chain API";
+  content: "Do-Chain LCD";
   color: var(--do-text-strong);
   font-size: 18px;
   font-weight: 800;
