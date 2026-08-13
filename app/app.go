@@ -38,7 +38,6 @@ import (
 	v20 "github.com/Daviddochain/dochain-core/v4/app/upgrades/v20"
 	v21 "github.com/Daviddochain/dochain-core/v4/app/upgrades/v21"
 	v22 "github.com/Daviddochain/dochain-core/v4/app/upgrades/v22"
-	v23 "github.com/Daviddochain/dochain-core/v4/app/upgrades/v23"
 	v3 "github.com/Daviddochain/dochain-core/v4/app/upgrades/v3"
 	v4 "github.com/Daviddochain/dochain-core/v4/app/upgrades/v4"
 	v5 "github.com/Daviddochain/dochain-core/v4/app/upgrades/v5"
@@ -94,7 +93,6 @@ const (
 	manualV20UpgradeFilename = "manual-v20-upgrade.json"
 	manualV21UpgradeFilename = "manual-v21-upgrade.json"
 	manualV22UpgradeFilename = "manual-v22-upgrade.json"
-	manualV23UpgradeFilename = "manual-v23-upgrade.json"
 )
 
 var (
@@ -130,7 +128,6 @@ var (
 		v20.Upgrade,
 		v21.Upgrade,
 		v22.Upgrade,
-		v23.Upgrade,
 	}
 
 	// Forks defines forks to be applied to the network
@@ -167,7 +164,6 @@ type DoApp struct {
 	manualV20UpgradePlan upgradetypes.Plan
 	manualV21UpgradePlan upgradetypes.Plan
 	manualV22UpgradePlan upgradetypes.Plan
-	manualV23UpgradePlan upgradetypes.Plan
 
 	// the module manager
 	mm *module.Manager
@@ -347,7 +343,6 @@ func NewDoApp(
 			BankKeeper:     app.BankKeeper,
 			AccountKeeper:  app.AccountKeeper,
 			TreasuryKeeper: app.TreasuryKeeper,
-			ValueFeeKeeper: app.ValueFeeKeeper,
 		},
 	)
 	if err != nil {
@@ -451,9 +446,6 @@ func (app *DoApp) PreBlocker(ctx sdk.Context, _ *abci.RequestFinalizeBlock) (*sd
 		return nil, err
 	}
 	if err := app.applyManualV22Upgrade(ctx); err != nil {
-		return nil, err
-	}
-	if err := app.applyManualV23Upgrade(ctx); err != nil {
 		return nil, err
 	}
 	return resp, nil
@@ -679,10 +671,6 @@ func (app *DoApp) applyManualV22Upgrade(ctx sdk.Context) error {
 	return app.applyManualUpgrade(ctx, app.manualV22UpgradePlan)
 }
 
-func (app *DoApp) applyManualV23Upgrade(ctx sdk.Context) error {
-	return app.applyManualUpgrade(ctx, app.manualV23UpgradePlan)
-}
-
 func (app *DoApp) applyManualUpgrade(ctx sdk.Context, plan upgradetypes.Plan) error {
 	if plan.Name == "" || ctx.BlockHeight() != plan.Height {
 		return nil
@@ -713,7 +701,6 @@ func (app *DoApp) readManualUpgradePlans() (upgradetypes.Plan, bool, error) {
 		{manualV20UpgradeFilename, v20.UpgradeName, &app.manualV20UpgradePlan},
 		{manualV21UpgradeFilename, v21.UpgradeName, &app.manualV21UpgradePlan},
 		{manualV22UpgradeFilename, v22.UpgradeName, &app.manualV22UpgradePlan},
-		{manualV23UpgradeFilename, v23.UpgradeName, &app.manualV23UpgradePlan},
 	}
 
 	var selected upgradetypes.Plan

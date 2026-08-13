@@ -97,43 +97,6 @@ func (s *AnteTestSuite) TestFeeDecoratorEnforcesMempoolMinimumAndPriority() {
 	s.Require().Equal(int64(10), newCtx.Priority())
 }
 
-func (s *AnteTestSuite) TestFeeDecoratorUsesChainGasPriceAfterV23() {
-	s.SetupTest(true)
-	s.app.ValueFeeKeeper.SetParams(s.ctx, valuefeetypes.MainnetV23Params())
-	s.txBuilder = s.clientCtx.TxConfig.NewTxBuilder()
-
-	priv, _, address := testdata.KeyTestPubAddr()
-	s.Require().NoError(banktestutil.FundAccount(
-		s.ctx,
-		s.app.BankKeeper,
-		address,
-		sdk.NewCoins(sdk.NewInt64Coin(core.MicroDoDenom, 2_000_000_000)),
-	))
-	s.Require().NoError(s.txBuilder.SetMsgs(testdata.NewTestMsg(address)))
-	s.txBuilder.SetGasLimit(100)
-	s.txBuilder.SetFeeAmount(sdk.NewCoins(sdk.NewInt64Coin(core.MicroDoDenom, 999_999_999)))
-
-	tx, err := s.CreateTestTx(
-		[]cryptotypes.PrivKey{priv}, []uint64{0}, []uint64{0}, s.ctx.ChainID(),
-	)
-	s.Require().NoError(err)
-
-	lowNodePrice := sdk.NewDecCoins(sdk.NewDecCoin(core.MicroDoDenom, sdkmath.OneInt()))
-	_, err = s.feeHandler()(s.ctx.WithMinGasPrices(lowNodePrice), tx, false)
-	s.Require().Error(err)
-
-	s.txBuilder = s.clientCtx.TxConfig.NewTxBuilder()
-	s.Require().NoError(s.txBuilder.SetMsgs(testdata.NewTestMsg(address)))
-	s.txBuilder.SetGasLimit(100)
-	s.txBuilder.SetFeeAmount(sdk.NewCoins(sdk.NewInt64Coin(core.MicroDoDenom, 1_000_000_000)))
-	tx, err = s.CreateTestTx(
-		[]cryptotypes.PrivKey{priv}, []uint64{0}, []uint64{0}, s.ctx.ChainID(),
-	)
-	s.Require().NoError(err)
-	_, err = s.feeHandler()(s.ctx.WithMinGasPrices(lowNodePrice), tx, false)
-	s.Require().NoError(err)
-}
-
 func (s *AnteTestSuite) TestFeeDecoratorDeductsOnlyConfiguredFee() {
 	s.SetupTest(true)
 	s.txBuilder = s.clientCtx.TxConfig.NewTxBuilder()
