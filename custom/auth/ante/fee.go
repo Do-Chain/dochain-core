@@ -166,7 +166,7 @@ func (fd FeeDecorator) checkTxFee(ctx sdk.Context, tx sdk.Tx, taxes sdk.Coins, n
 	}
 
 	if !isOracleTx {
-		requiredGasFees := requiredGasFees(ctx, gas)
+		requiredGasFees := fd.requiredGasFees(ctx, gas)
 		if !pureValueSend {
 			if err := checkRequiredGasAndValueFees(feeCoins, requiredGasFees, valueFee, hasValueFee); err != nil {
 				return 0, false, false, err
@@ -200,6 +200,33 @@ func requiredGasFees(ctx sdk.Context, gas uint64) sdk.Coins {
 	requiredFees := make(sdk.Coins, len(minGasPrices))
 	glDec := sdkmath.LegacyNewDec(int64(gas))
 	for i, gp := range minGasPrices {
+		fee := gp.Amount.Mul(glDec)
+		requiredFees[i] = sdk.NewCoin(gp.Denom, fee.Ceil().RoundInt())
+	}
+	return requiredFees.Sort()
+}
+
+func (fd FeeDecorator) requiredGasFees(ctx sdk.Context, gas uint64) sdk.Coins {
+	if fd.valueFeeKeeper == nil {
+		return requiredGasFees(ctx, gas)
+	}
+
+	params := fd.valueFeeKeeper.GetParams(ctx)
+	if params.PolicyVersion < 23 || params.NormalGasPrices.IsZero() {
+		return requiredGasFees(ctx, gas)
+	}
+
+	return gasPricesToFees(params.NormalGasPrices, gas)
+}
+
+func gasPricesToFees(gasPrices sdk.DecCoins, gas uint64) sdk.Coins {
+	if gasPrices.IsZero() {
+		return sdk.NewCoins()
+	}
+
+	requiredFees := make(sdk.Coins, len(gasPrices))
+	glDec := sdkmath.LegacyNewDecFromInt(sdkmath.NewIntFromUint64(gas))
+	for i, gp := range gasPrices {
 		fee := gp.Amount.Mul(glDec)
 		requiredFees[i] = sdk.NewCoin(gp.Denom, fee.Ceil().RoundInt())
 	}
