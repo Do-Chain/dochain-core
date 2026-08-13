@@ -82,6 +82,12 @@ func MainnetV22Params() Params {
 	return params
 }
 
+func MainnetV23Params() Params {
+	params := MainnetV22Params()
+	params.PolicyVersion = 23
+	return params
+}
+
 func ParamKeyTable() paramstypes.KeyTable {
 	return paramstypes.NewKeyTable().RegisterParamSet(&Params{})
 }
