@@ -82,16 +82,6 @@ func (vk fakeValueFeeKeeper) GetParams(sdk.Context) valuefeetypes.Params {
 	return vk.params
 }
 
-type meteredValueFeeKeeper struct {
-	params valuefeetypes.Params
-	gas    uint64
-}
-
-func (vk meteredValueFeeKeeper) GetParams(ctx sdk.Context) valuefeetypes.Params {
-	ctx.GasMeter().ConsumeGas(vk.gas, "valuefee params")
-	return vk.params
-}
-
 func TestRefundableGasFeesRefundsOnlyUnusedNormalGas(t *testing.T) {
 	paid := sdk.NewCoins(sdk.NewInt64Coin(core.MicroDoDenom, 3_000_000_000))
 	limit := sdk.NewCoins(sdk.NewInt64Coin(core.MicroDoDenom, 3_000_000_000))
@@ -131,36 +121,6 @@ func TestRefundUnusedGasDecoratorRefundsSuccessfulNormalTx(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, payer, bankKeeper.to)
 	require.Equal(t, "600000000udo", bankKeeper.refund.String())
-}
-
-func TestRefundUnusedGasDecoratorDoesNotChargeGasBeforeV23(t *testing.T) {
-	payer := sdk.AccAddress([]byte("payer---------------"))
-	decorator := NewRefundUnusedGasDecorator(
-		fakeAccountKeeper{moduleAddr: sdk.AccAddress([]byte("fee-collector-------"))},
-		&fakeBankKeeper{},
-		meteredValueFeeKeeper{
-			params: valuefeetypes.MainnetV22Params(),
-			gas:    50,
-		},
-	)
-	ctx := sdk.Context{}.
-		WithGasMeter(storetypes.NewGasMeter(300)).
-		WithEventManager(sdk.NewEventManager()).
-		WithBlockHeight(1)
-	ctx.GasMeter().ConsumeGas(100, "existing")
-	tx := fakeFeeTx{
-		msgs:     []sdk.Msg{testdata.NewTestMsg(payer)},
-		gas:      300,
-		fee:      sdk.NewCoins(sdk.NewInt64Coin(core.MicroDoDenom, 3_000_000_000)),
-		feePayer: payer,
-	}
-
-	newCtx, err := decorator.PostHandle(ctx, tx, false, true, func(ctx sdk.Context, _ sdk.Tx, _, _ bool) (sdk.Context, error) {
-		return ctx, nil
-	})
-
-	require.NoError(t, err)
-	require.Equal(t, uint64(100), newCtx.GasMeter().GasConsumed())
 }
 
 func TestRefundUnusedGasDecoratorSkipsPureValueSend(t *testing.T) {

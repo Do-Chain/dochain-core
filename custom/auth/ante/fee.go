@@ -160,13 +160,13 @@ func (fd FeeDecorator) checkTxFee(ctx sdk.Context, tx sdk.Tx, taxes sdk.Coins, n
 	gas := feeTx.GetGas()
 	msgs := feeTx.GetMsgs()
 	isOracleTx := helper.IsOracleTx(msgs)
-	valueFee, hasValueFee, pureValueSend, valueFeeParams, err := fd.computeValueSendFee(ctx, msgs)
+	valueFee, hasValueFee, pureValueSend, err := fd.computeValueSendFee(ctx, msgs)
 	if err != nil {
 		return 0, false, false, err
 	}
 
 	if !isOracleTx {
-		requiredGasFees := fd.requiredGasFees(ctx, gas, valueFeeParams)
+		requiredGasFees := fd.requiredGasFees(ctx, gas)
 		if !pureValueSend {
 			if err := checkRequiredGasAndValueFees(feeCoins, requiredGasFees, valueFee, hasValueFee); err != nil {
 				return 0, false, false, err
@@ -206,7 +206,12 @@ func requiredGasFees(ctx sdk.Context, gas uint64) sdk.Coins {
 	return requiredFees.Sort()
 }
 
-func (fd FeeDecorator) requiredGasFees(ctx sdk.Context, gas uint64, params valuefeetypes.Params) sdk.Coins {
+func (fd FeeDecorator) requiredGasFees(ctx sdk.Context, gas uint64) sdk.Coins {
+	if fd.valueFeeKeeper == nil {
+		return requiredGasFees(ctx, gas)
+	}
+
+	params := fd.valueFeeKeeper.GetParams(ctx)
 	if params.PolicyVersion < 23 || params.NormalGasPrices.IsZero() {
 		return requiredGasFees(ctx, gas)
 	}
@@ -261,19 +266,18 @@ func checkRequiredGasAndValueFees(feeCoins, gasFees sdk.Coins, valueFee sdk.Coin
 	)
 }
 
-func (fd FeeDecorator) computeValueSendFee(ctx sdk.Context, msgs []sdk.Msg) (sdk.Coin, bool, bool, valuefeetypes.Params, error) {
+func (fd FeeDecorator) computeValueSendFee(ctx sdk.Context, msgs []sdk.Msg) (sdk.Coin, bool, bool, error) {
 	zero := sdk.NewCoin(core.MicroDoDenom, sdkmath.ZeroInt())
-	params := valuefeetypes.DefaultParams()
 	if fd.valueFeeKeeper == nil {
-		return zero, false, false, params, nil
+		return zero, false, false, nil
 	}
 
-	params = fd.valueFeeKeeper.GetParams(ctx)
+	params := fd.valueFeeKeeper.GetParams(ctx)
 	if !params.Enabled || !params.ApplyToMsgSend || params.PolicyVersion == 0 {
-		return zero, false, false, params, nil
+		return zero, false, false, nil
 	}
 	if err := params.Validate(); err != nil {
-		return zero, false, false, params, err
+		return zero, false, false, err
 	}
 
 	totalValue := sdkmath.ZeroInt()
@@ -287,11 +291,11 @@ func (fd FeeDecorator) computeValueSendFee(ctx sdk.Context, msgs []sdk.Msg) (sdk
 		}
 		fromAddr, err := sdk.AccAddressFromBech32(sendMsg.FromAddress)
 		if err != nil {
-			return zero, false, false, params, err
+			return zero, false, false, err
 		}
 		toAddr, err := sdk.AccAddressFromBech32(sendMsg.ToAddress)
 		if err != nil {
-			return zero, false, false, params, err
+			return zero, false, false, err
 		}
 		if fd.isModuleAccount(ctx, fromAddr) || fd.isModuleAccount(ctx, toAddr) {
 			pureValueSend = false
@@ -323,7 +327,7 @@ func (fd FeeDecorator) computeValueSendFee(ctx sdk.Context, msgs []sdk.Msg) (sdk
 	}
 
 	if eligibleMsgs == 0 {
-		return zero, false, false, params, nil
+		return zero, false, false, nil
 	}
 
 	feeAmount := totalValue.MulRaw(int64(params.RateBps)).QuoRaw(10_000)
@@ -334,7 +338,7 @@ func (fd FeeDecorator) computeValueSendFee(ctx sdk.Context, msgs []sdk.Msg) (sdk
 		feeAmount = params.MaxFee
 	}
 
-	return sdk.NewCoin(params.FeeDenom, feeAmount), true, pureValueSend, params, nil
+	return sdk.NewCoin(params.FeeDenom, feeAmount), true, pureValueSend, nil
 }
 
 func denomValueInFeeDenom(coin sdk.Coin, params valuefeetypes.Params) (sdkmath.Int, bool) {

@@ -7,7 +7,6 @@ import (
 
 	errorsmod "cosmossdk.io/errors"
 	sdkmath "cosmossdk.io/math"
-	storetypes "cosmossdk.io/store/types"
 	"github.com/Daviddochain/dochain-core/v4/app/helper"
 	valuefeetypes "github.com/Daviddochain/dochain-core/v4/x/valuefee/types"
 	sdk "github.com/cosmos/cosmos-sdk/types"
@@ -62,7 +61,7 @@ func (rd RefundUnusedGasDecorator) PostHandle(ctx sdk.Context, tx sdk.Tx, simula
 		return newCtx, nil
 	}
 
-	params := rd.valueFeeKeeper.GetParams(newCtx.WithGasMeter(storetypes.NewInfiniteGasMeter()))
+	params := rd.valueFeeKeeper.GetParams(newCtx)
 	if params.PolicyVersion < 23 || !params.RefundUnusedGas || params.NormalGasPrices.IsZero() {
 		return newCtx, nil
 	}
