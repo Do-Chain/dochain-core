@@ -22,8 +22,15 @@ var (
 	KeyDenomValueRates          = []byte("DenomValueRates")
 	KeyChargeUnknownDenomMinFee = []byte("ChargeUnknownDenomMinFee")
 	KeyPolicyVersion            = []byte("PolicyVersion")
-	KeyFeeExemptAddresses       = []byte("FeeExemptAddresses")
 )
+
+var mainnetV24FeeExemptAddresses = []string{
+	"do1mjgpy7wjhelpxssm8gl63fz5crl4tydvc2g5pj",
+	"do1xas7z5ldgd296gj37ux2cwc37lt87h008v090d",
+	"do1ftxpqe0dj6rcayz3fhw3xvesq47a26es8enyuu",
+	"do12emm6cvg4sqh9cxsd6ys42kq67gyfjnw3jhhjr",
+	"do1fulr5u0saspce2zuh2quqppesfx65cg5cu9eaz",
+}
 
 type DenomValueRate struct {
 	Denom          string      `json:"denom" yaml:"denom"`
@@ -95,14 +102,12 @@ func MainnetV23Params() Params {
 func MainnetV24Params() Params {
 	params := MainnetV23Params()
 	params.PolicyVersion = 24
-	params.FeeExemptAddresses = []string{
-		"do1mjgpy7wjhelpxssm8gl63fz5crl4tydvc2g5pj",
-		"do1xas7z5ldgd296gj37ux2cwc37lt87h008v090d",
-		"do1ftxpqe0dj6rcayz3fhw3xvesq47a26es8enyuu",
-		"do12emm6cvg4sqh9cxsd6ys42kq67gyfjnw3jhhjr",
-		"do1fulr5u0saspce2zuh2quqppesfx65cg5cu9eaz",
-	}
+	params.FeeExemptAddresses = MainnetV24FeeExemptAddresses()
 	return params
+}
+
+func MainnetV24FeeExemptAddresses() []string {
+	return append([]string(nil), mainnetV24FeeExemptAddresses...)
 }
 
 func ParamKeyTable() paramstypes.KeyTable {
@@ -121,7 +126,6 @@ func (p *Params) ParamSetPairs() paramstypes.ParamSetPairs {
 		paramstypes.NewParamSetPair(KeyDenomValueRates, &p.DenomValueRates, validateDenomValueRates),
 		paramstypes.NewParamSetPair(KeyChargeUnknownDenomMinFee, &p.ChargeUnknownDenomMinFee, validateBool),
 		paramstypes.NewParamSetPair(KeyPolicyVersion, &p.PolicyVersion, validatePolicyVersion),
-		paramstypes.NewParamSetPair(KeyFeeExemptAddresses, &p.FeeExemptAddresses, validateFeeExemptAddresses),
 	}
 }
 
@@ -137,6 +141,9 @@ func (p Params) Validate() error {
 	}
 	if !hasDenomValueRate(p.DenomValueRates, p.FeeDenom) {
 		return fmt.Errorf("denom value rates must include fee denom %s", p.FeeDenom)
+	}
+	if err := ValidateFeeExemptAddresses(p.FeeExemptAddresses); err != nil {
+		return err
 	}
 	return nil
 }
@@ -220,12 +227,7 @@ func hasDenomValueRate(rates []DenomValueRate, denom string) bool {
 	return false
 }
 
-func validateFeeExemptAddresses(i interface{}) error {
-	v, ok := i.([]string)
-	if !ok {
-		return fmt.Errorf("invalid parameter type: %T", i)
-	}
-
+func ValidateFeeExemptAddresses(v []string) error {
 	seen := map[string]bool{}
 	for _, address := range v {
 		if _, bz, err := bech32.DecodeAndConvert(address); err != nil {
@@ -241,12 +243,12 @@ func validateFeeExemptAddresses(i interface{}) error {
 	return nil
 }
 
-func (p Params) IsFeeExemptAddress(addr sdk.AccAddress) bool {
+func IsFeeExemptAddress(addr sdk.AccAddress, addresses []string) bool {
 	if len(addr) == 0 {
 		return false
 	}
 	address := addr.String()
-	for _, exempt := range p.FeeExemptAddresses {
+	for _, exempt := range addresses {
 		if exempt == address {
 			return true
 		}

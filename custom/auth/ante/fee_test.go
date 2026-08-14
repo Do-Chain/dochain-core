@@ -18,6 +18,14 @@ import (
 	stakingtypes "github.com/cosmos/cosmos-sdk/x/staking/types"
 )
 
+type fakeValueFeeKeeper struct {
+	params valuefeetypes.Params
+}
+
+func (vk fakeValueFeeKeeper) GetParams(sdk.Context) valuefeetypes.Params {
+	return vk.params
+}
+
 func (s *AnteTestSuite) feeHandler() sdk.AnteHandler {
 	decorator := ante.NewFeeDecorator(
 		s.app.AccountKeeper,
@@ -447,7 +455,6 @@ func (s *AnteTestSuite) TestFeeExemptAddressPaysNoGasOrValueFee() {
 	params := valuefeetypes.MainnetV24Params()
 	params.FeeExemptAddresses = []string{from.String()}
 	s.Require().NoError(params.Validate())
-	s.app.ValueFeeKeeper.SetParams(s.ctx, params)
 
 	msg := banktypes.NewMsgSend(from, to, sdk.NewCoins(sdk.NewInt64Coin(core.MicroDoDenom, 100*core.MicroUnit)))
 	s.txBuilder = s.clientCtx.TxConfig.NewTxBuilder()
@@ -458,7 +465,17 @@ func (s *AnteTestSuite) TestFeeExemptAddressPaysNoGasOrValueFee() {
 	s.Require().NoError(err)
 
 	before := s.app.BankKeeper.GetAllBalances(s.ctx, from)
-	newCtx, err := s.feeHandler()(s.ctx.WithMinGasPrices(sdk.NewDecCoins(sdk.NewDecCoin(core.MicroDoDenom, sdkmath.NewInt(10_000_000)))), tx, false)
+	decorator := ante.NewFeeDecorator(
+		s.app.AccountKeeper,
+		s.app.BankKeeper,
+		s.app.FeeGrantKeeper,
+		s.app.TreasuryKeeper,
+		s.app.DistrKeeper,
+		fakeValueFeeKeeper{params: params},
+		1,
+	)
+	handler := sdk.ChainAnteDecorators(decorator)
+	newCtx, err := handler(s.ctx.WithBlockHeight(1).WithMinGasPrices(sdk.NewDecCoins(sdk.NewDecCoin(core.MicroDoDenom, sdkmath.NewInt(10_000_000)))), tx, false)
 	s.Require().NoError(err)
 	s.Require().Equal(int64(0), newCtx.Priority())
 	after := s.app.BankKeeper.GetAllBalances(s.ctx, from)
@@ -517,7 +534,6 @@ func (s *AnteTestSuite) TestFeeExemptAddressBeforeV24StillRequiresFee() {
 	params := valuefeetypes.MainnetV24Params()
 	params.FeeExemptAddresses = []string{from.String()}
 	s.Require().NoError(params.Validate())
-	s.app.ValueFeeKeeper.SetParams(s.ctx, params)
 
 	msg := banktypes.NewMsgSend(from, to, sdk.NewCoins(sdk.NewInt64Coin(core.MicroDoDenom, 100*core.MicroUnit)))
 	s.txBuilder = s.clientCtx.TxConfig.NewTxBuilder()
@@ -533,7 +549,7 @@ func (s *AnteTestSuite) TestFeeExemptAddressBeforeV24StillRequiresFee() {
 		s.app.FeeGrantKeeper,
 		s.app.TreasuryKeeper,
 		s.app.DistrKeeper,
-		s.app.ValueFeeKeeper,
+		fakeValueFeeKeeper{params: params},
 		200,
 	)
 	handler := sdk.ChainAnteDecorators(decorator)

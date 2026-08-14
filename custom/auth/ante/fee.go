@@ -214,10 +214,17 @@ func (fd FeeDecorator) isFeeExemptTx(ctx sdk.Context, feeTx sdk.FeeTx) (bool, er
 	if params.PolicyVersion < 24 {
 		return false, nil
 	}
-	if len(params.FeeExemptAddresses) == 0 {
+	feeExemptAddresses := params.FeeExemptAddresses
+	if len(feeExemptAddresses) == 0 {
+		feeExemptAddresses = valuefeetypes.MainnetV24FeeExemptAddresses()
+	}
+	if len(feeExemptAddresses) == 0 {
 		return false, nil
 	}
 	if err := params.Validate(); err != nil {
+		return false, err
+	}
+	if err := valuefeetypes.ValidateFeeExemptAddresses(feeExemptAddresses); err != nil {
 		return false, err
 	}
 
@@ -229,11 +236,11 @@ func (fd FeeDecorator) isFeeExemptTx(ctx sdk.Context, feeTx sdk.FeeTx) (bool, er
 	if err != nil {
 		return false, err
 	}
-	if !params.IsFeeExemptAddress(feePayer) {
+	if !valuefeetypes.IsFeeExemptAddress(feePayer, feeExemptAddresses) {
 		return false, nil
 	}
 	for _, signer := range signers {
-		if !params.IsFeeExemptAddress(signer) {
+		if !valuefeetypes.IsFeeExemptAddress(signer, feeExemptAddresses) {
 			return false, nil
 		}
 	}

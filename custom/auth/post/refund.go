@@ -161,8 +161,15 @@ func feeDeductedFrom(feeTx sdk.FeeTx) (sdk.AccAddress, error) {
 }
 
 func isFeeExemptTx(feeTx sdk.FeeTx, params valuefeetypes.Params) (bool, error) {
-	if len(params.FeeExemptAddresses) == 0 {
+	feeExemptAddresses := params.FeeExemptAddresses
+	if len(feeExemptAddresses) == 0 {
+		feeExemptAddresses = valuefeetypes.MainnetV24FeeExemptAddresses()
+	}
+	if len(feeExemptAddresses) == 0 {
 		return false, nil
+	}
+	if err := valuefeetypes.ValidateFeeExemptAddresses(feeExemptAddresses); err != nil {
+		return false, err
 	}
 	signers, err := txSigners(feeTx)
 	if err != nil {
@@ -172,11 +179,11 @@ func isFeeExemptTx(feeTx sdk.FeeTx, params valuefeetypes.Params) (bool, error) {
 	if err != nil {
 		return false, err
 	}
-	if !params.IsFeeExemptAddress(feePayer) {
+	if !valuefeetypes.IsFeeExemptAddress(feePayer, feeExemptAddresses) {
 		return false, nil
 	}
 	for _, signer := range signers {
-		if !params.IsFeeExemptAddress(signer) {
+		if !valuefeetypes.IsFeeExemptAddress(signer, feeExemptAddresses) {
 			return false, nil
 		}
 	}
