@@ -18,6 +18,7 @@ type HandlerOptions struct {
 	TreasuryKeeper      treasurykeeper.Keeper
 	ValueFeeKeeper      valuefeekeeper.Keeper
 	V23ActivationHeight int64
+	V24ActivationHeight int64
 }
 
 // NewPostHandler returns a PostHandler that checks and sets target
@@ -26,7 +27,7 @@ func NewPostHandler(options HandlerOptions) (sdk.PostHandler, error) {
 	_ = options.TreasuryKeeper
 
 	return sdk.ChainPostDecorators(
-		NewRefundUnusedGasDecorator(options.AccountKeeper, options.BankKeeper, options.ValueFeeKeeper, options.V23ActivationHeight),
+		NewRefundUnusedGasDecorator(options.AccountKeeper, options.BankKeeper, options.ValueFeeKeeper, options.V23ActivationHeight, options.V24ActivationHeight),
 		dyncommpost.NewDyncommPostDecorator(options.DyncommKeeper),
 	), nil
 }

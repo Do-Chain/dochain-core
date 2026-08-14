@@ -41,6 +41,7 @@ type HandlerOptions struct {
 	MFAKeeper              mfaante.MFAKeeper
 	StakingKeeper          *stakingkeeper.Keeper
 	Cdc                    codec.Codec
+	V24ActivationHeight    int64
 }
 
 func NewAnteHandler(options HandlerOptions) (sdk.AnteHandler, error) {
@@ -86,7 +87,7 @@ func NewAnteHandler(options HandlerOptions) (sdk.AnteHandler, error) {
 		NewMinInitialDepositDecorator(options.GovKeeper, options.TreasuryKeeper),
 		mfaante.NewMFARequirementDecorator(options.Cdc, options.AccountKeeper, options.MFAKeeper),
 		ante.NewConsumeGasForTxSizeDecorator(options.AccountKeeper),
-		NewFeeDecorator(options.AccountKeeper, options.BankKeeper, options.FeegrantKeeper, options.TreasuryKeeper, options.DistributionKeeper, options.ValueFeeKeeper),
+		NewFeeDecorator(options.AccountKeeper, options.BankKeeper, options.FeegrantKeeper, options.TreasuryKeeper, options.DistributionKeeper, options.ValueFeeKeeper, options.V24ActivationHeight),
 		dyncommante.NewDyncommDecorator(options.Cdc, options.DyncommKeeper, options.StakingKeeper),
 		ante.NewSetPubKeyDecorator(options.AccountKeeper),
 		ante.NewValidateSigCountDecorator(options.AccountKeeper),

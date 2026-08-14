@@ -24,9 +24,10 @@ type FeeDecorator struct {
 	treasuryKeeper TreasuryKeeper
 	distrKeeper    DistrKeeper
 	valueFeeKeeper ValueFeeKeeper
+	v24Activation  int64
 }
 
-func NewFeeDecorator(ak ante.AccountKeeper, bk BankKeeper, fk ante.FeegrantKeeper, tk TreasuryKeeper, dk DistrKeeper, vk ValueFeeKeeper) FeeDecorator {
+func NewFeeDecorator(ak ante.AccountKeeper, bk BankKeeper, fk ante.FeegrantKeeper, tk TreasuryKeeper, dk DistrKeeper, vk ValueFeeKeeper, v24Activation int64) FeeDecorator {
 	return FeeDecorator{
 		accountKeeper:  ak,
 		bankKeeper:     bk,
@@ -34,6 +35,7 @@ func NewFeeDecorator(ak ante.AccountKeeper, bk BankKeeper, fk ante.FeegrantKeepe
 		treasuryKeeper: tk,
 		distrKeeper:    dk,
 		valueFeeKeeper: vk,
+		v24Activation:  v24Activation,
 	}
 }
 
@@ -168,7 +170,7 @@ func (fd FeeDecorator) checkTxFee(ctx sdk.Context, tx sdk.Tx, taxes sdk.Coins, n
 	if err != nil {
 		return 0, false, false, err
 	}
-	if isOracleTx || feeExempt {
+	if feeExempt {
 		return 0, false, false, nil
 	}
 
@@ -178,11 +180,11 @@ func (fd FeeDecorator) checkTxFee(ctx sdk.Context, tx sdk.Tx, taxes sdk.Coins, n
 	}
 
 	requiredGasFees := requiredGasFees(ctx, gas)
-	if !pureValueSend {
+	if !isOracleTx && !pureValueSend {
 		if err := checkRequiredGasAndValueFees(feeCoins, requiredGasFees, valueFee, hasValueFee); err != nil {
 			return 0, false, false, err
 		}
-	} else if hasValueFee && !feeCoins.IsAllGTE(sdk.NewCoins(valueFee)) {
+	} else if !isOracleTx && hasValueFee && !feeCoins.IsAllGTE(sdk.NewCoins(valueFee)) {
 		return 0, false, false, errorsmod.Wrapf(
 			sdkerrors.ErrInsufficientFee,
 			"insufficient fee; got: %s required: %s",
@@ -202,10 +204,16 @@ func (fd FeeDecorator) checkTxFee(ctx sdk.Context, tx sdk.Tx, taxes sdk.Coins, n
 }
 
 func (fd FeeDecorator) isFeeExemptTx(ctx sdk.Context, feeTx sdk.FeeTx) (bool, error) {
+	if fd.v24Activation <= 0 || ctx.BlockHeight() < fd.v24Activation {
+		return false, nil
+	}
 	if fd.valueFeeKeeper == nil {
 		return false, nil
 	}
 	params := fd.valueFeeKeeper.GetParams(ctx)
+	if params.PolicyVersion < 24 {
+		return false, nil
+	}
 	if len(params.FeeExemptAddresses) == 0 {
 		return false, nil
 	}

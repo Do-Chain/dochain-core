@@ -82,7 +82,7 @@ func (vk *fakeValueFeeKeeper) GetParams(sdk.Context) valuefeetypes.Params {
 func TestRefundUnusedGasDecoratorDoesNothingBeforeActivationHeight(t *testing.T) {
 	payer := sdk.AccAddress([]byte("payer---------------"))
 	valueKeeper := &fakeValueFeeKeeper{params: valuefeetypes.MainnetV23Params()}
-	decorator := NewRefundUnusedGasDecorator(fakeAccountKeeper{}, &fakeBankKeeper{}, valueKeeper, 100)
+	decorator := NewRefundUnusedGasDecorator(fakeAccountKeeper{}, &fakeBankKeeper{}, valueKeeper, 100, 0)
 	ctx := sdk.Context{}.
 		WithGasMeter(storetypes.NewGasMeter(300)).
 		WithEventManager(sdk.NewEventManager()).
@@ -108,7 +108,7 @@ func TestRefundUnusedGasDecoratorRefundsSuccessfulNormalTxAfterActivation(t *tes
 	payer := sdk.AccAddress([]byte("payer---------------"))
 	valueKeeper := &fakeValueFeeKeeper{params: valuefeetypes.MainnetV23Params()}
 	bankKeeper := &fakeBankKeeper{}
-	decorator := NewRefundUnusedGasDecorator(fakeAccountKeeper{}, bankKeeper, valueKeeper, 100)
+	decorator := NewRefundUnusedGasDecorator(fakeAccountKeeper{}, bankKeeper, valueKeeper, 100, 0)
 	ctx := sdk.Context{}.
 		WithGasMeter(storetypes.NewGasMeter(300)).
 		WithEventManager(sdk.NewEventManager()).
@@ -135,7 +135,7 @@ func TestRefundUnusedGasDecoratorSkipsFailedTx(t *testing.T) {
 	payer := sdk.AccAddress([]byte("payer---------------"))
 	valueKeeper := &fakeValueFeeKeeper{params: valuefeetypes.MainnetV23Params()}
 	bankKeeper := &fakeBankKeeper{}
-	decorator := NewRefundUnusedGasDecorator(fakeAccountKeeper{}, bankKeeper, valueKeeper, 100)
+	decorator := NewRefundUnusedGasDecorator(fakeAccountKeeper{}, bankKeeper, valueKeeper, 100, 0)
 	ctx := sdk.Context{}.
 		WithGasMeter(storetypes.NewGasMeter(300)).
 		WithEventManager(sdk.NewEventManager()).
@@ -172,6 +172,7 @@ func TestRefundUnusedGasDecoratorSkipsPureValueSend(t *testing.T) {
 		bankKeeper,
 		valueKeeper,
 		100,
+		0,
 	)
 	ctx := sdk.Context{}.
 		WithGasMeter(storetypes.NewGasMeter(300)).
@@ -210,6 +211,7 @@ func TestRefundUnusedGasDecoratorRefundsOnlyNormalFeeWhenMixedTxIncludesValueFee
 		bankKeeper,
 		valueKeeper,
 		100,
+		0,
 	)
 	ctx := sdk.Context{}.
 		WithGasMeter(storetypes.NewGasMeter(300)).
@@ -241,7 +243,7 @@ func TestRefundUnusedGasDecoratorSkipsFeeExemptTx(t *testing.T) {
 	params.FeeExemptAddresses = []string{payer.String()}
 	valueKeeper := &fakeValueFeeKeeper{params: params}
 	bankKeeper := &fakeBankKeeper{}
-	decorator := NewRefundUnusedGasDecorator(fakeAccountKeeper{}, bankKeeper, valueKeeper, 100)
+	decorator := NewRefundUnusedGasDecorator(fakeAccountKeeper{}, bankKeeper, valueKeeper, 100, 100)
 	ctx := sdk.Context{}.
 		WithGasMeter(storetypes.NewGasMeter(300)).
 		WithEventManager(sdk.NewEventManager()).
@@ -260,4 +262,31 @@ func TestRefundUnusedGasDecoratorSkipsFeeExemptTx(t *testing.T) {
 
 	require.NoError(t, err)
 	require.True(t, bankKeeper.refund.IsZero())
+}
+
+func TestRefundUnusedGasDecoratorDoesNotSkipFeeExemptBeforeV24(t *testing.T) {
+	payer := sdk.AccAddress([]byte("payer---------------"))
+	params := valuefeetypes.MainnetV24Params()
+	params.FeeExemptAddresses = []string{payer.String()}
+	valueKeeper := &fakeValueFeeKeeper{params: params}
+	bankKeeper := &fakeBankKeeper{}
+	decorator := NewRefundUnusedGasDecorator(fakeAccountKeeper{}, bankKeeper, valueKeeper, 100, 200)
+	ctx := sdk.Context{}.
+		WithGasMeter(storetypes.NewGasMeter(300)).
+		WithEventManager(sdk.NewEventManager()).
+		WithBlockHeight(100)
+	ctx.GasMeter().ConsumeGas(150, "test")
+	tx := fakeFeeTx{
+		msgs:     []sdk.Msg{testdata.NewTestMsg(payer)},
+		gas:      300,
+		fee:      sdk.NewCoins(sdk.NewInt64Coin(core.MicroDoDenom, 3_000_000_000)),
+		feePayer: payer,
+	}
+
+	_, err := decorator.PostHandle(ctx, tx, false, true, func(ctx sdk.Context, _ sdk.Tx, _, _ bool) (sdk.Context, error) {
+		return ctx, nil
+	})
+
+	require.NoError(t, err)
+	require.Equal(t, "1500000000udo", bankKeeper.refund.String())
 }

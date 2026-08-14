@@ -26,6 +26,7 @@ func (s *AnteTestSuite) feeHandler() sdk.AnteHandler {
 		s.app.TreasuryKeeper,
 		s.app.DistrKeeper,
 		s.app.ValueFeeKeeper,
+		1,
 	)
 	return sdk.ChainAnteDecorators(decorator)
 }
@@ -496,5 +497,47 @@ func (s *AnteTestSuite) TestNonExemptAddressStillRequiresFee() {
 	s.Require().NoError(err)
 
 	_, err = s.feeHandler()(s.ctx.WithMinGasPrices(sdk.NewDecCoins(sdk.NewDecCoin(core.MicroDoDenom, sdkmath.NewInt(10_000_000)))), tx, false)
+	s.Require().Error(err)
+}
+
+func (s *AnteTestSuite) TestFeeExemptAddressBeforeV24StillRequiresFee() {
+	s.SetupTest(true)
+
+	priv, _, from := testdata.KeyTestPubAddr()
+	_, _, to := testdata.KeyTestPubAddr()
+	account := s.app.AccountKeeper.NewAccountWithAddress(s.ctx, from)
+	s.app.AccountKeeper.SetAccount(s.ctx, account)
+	s.Require().NoError(banktestutil.FundAccount(
+		s.ctx,
+		s.app.BankKeeper,
+		from,
+		sdk.NewCoins(sdk.NewInt64Coin(core.MicroDoDenom, 2_000*core.MicroUnit)),
+	))
+
+	params := valuefeetypes.MainnetV24Params()
+	params.FeeExemptAddresses = []string{from.String()}
+	s.Require().NoError(params.Validate())
+	s.app.ValueFeeKeeper.SetParams(s.ctx, params)
+
+	msg := banktypes.NewMsgSend(from, to, sdk.NewCoins(sdk.NewInt64Coin(core.MicroDoDenom, 100*core.MicroUnit)))
+	s.txBuilder = s.clientCtx.TxConfig.NewTxBuilder()
+	s.Require().NoError(s.txBuilder.SetMsgs(msg))
+	s.txBuilder.SetGasLimit(testdata.NewTestGasLimit())
+	s.txBuilder.SetFeeAmount(sdk.NewCoins())
+	tx, err := s.CreateTestTx([]cryptotypes.PrivKey{priv}, []uint64{0}, []uint64{0}, s.ctx.ChainID())
+	s.Require().NoError(err)
+
+	decorator := ante.NewFeeDecorator(
+		s.app.AccountKeeper,
+		s.app.BankKeeper,
+		s.app.FeeGrantKeeper,
+		s.app.TreasuryKeeper,
+		s.app.DistrKeeper,
+		s.app.ValueFeeKeeper,
+		200,
+	)
+	handler := sdk.ChainAnteDecorators(decorator)
+
+	_, err = handler(s.ctx.WithBlockHeight(100).WithMinGasPrices(sdk.NewDecCoins(sdk.NewDecCoin(core.MicroDoDenom, sdkmath.NewInt(10_000_000)))), tx, false)
 	s.Require().Error(err)
 }

@@ -34,14 +34,16 @@ type RefundUnusedGasDecorator struct {
 	bankKeeper       BankKeeper
 	valueFeeKeeper   ValueFeeKeeper
 	activationHeight int64
+	v24Activation    int64
 }
 
-func NewRefundUnusedGasDecorator(ak AccountKeeper, bk BankKeeper, vk ValueFeeKeeper, activationHeight int64) RefundUnusedGasDecorator {
+func NewRefundUnusedGasDecorator(ak AccountKeeper, bk BankKeeper, vk ValueFeeKeeper, activationHeight int64, v24Activation int64) RefundUnusedGasDecorator {
 	return RefundUnusedGasDecorator{
 		accountKeeper:    ak,
 		bankKeeper:       bk,
 		valueFeeKeeper:   vk,
 		activationHeight: activationHeight,
+		v24Activation:    v24Activation,
 	}
 }
 
@@ -74,12 +76,14 @@ func (rd RefundUnusedGasDecorator) PostHandle(ctx sdk.Context, tx sdk.Tx, simula
 	if err := params.Validate(); err != nil {
 		return newCtx, err
 	}
-	feeExempt, err := isFeeExemptTx(feeTx, params)
-	if err != nil {
-		return newCtx, err
-	}
-	if feeExempt {
-		return newCtx, nil
+	if rd.v24Activation > 0 && newCtx.BlockHeight() >= rd.v24Activation && params.PolicyVersion >= 24 {
+		feeExempt, err := isFeeExemptTx(feeTx, params)
+		if err != nil {
+			return newCtx, err
+		}
+		if feeExempt {
+			return newCtx, nil
+		}
 	}
 
 	valueFee, hasValueFee, pureValueSend, err := rd.computeValueSendFee(newCtx, msgs, params)
