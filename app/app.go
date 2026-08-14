@@ -39,6 +39,7 @@ import (
 	v21 "github.com/Daviddochain/dochain-core/v4/app/upgrades/v21"
 	v22 "github.com/Daviddochain/dochain-core/v4/app/upgrades/v22"
 	v23 "github.com/Daviddochain/dochain-core/v4/app/upgrades/v23"
+	v24 "github.com/Daviddochain/dochain-core/v4/app/upgrades/v24"
 	v3 "github.com/Daviddochain/dochain-core/v4/app/upgrades/v3"
 	v4 "github.com/Daviddochain/dochain-core/v4/app/upgrades/v4"
 	v5 "github.com/Daviddochain/dochain-core/v4/app/upgrades/v5"
@@ -95,6 +96,7 @@ const (
 	manualV21UpgradeFilename = "manual-v21-upgrade.json"
 	manualV22UpgradeFilename = "manual-v22-upgrade.json"
 	manualV23UpgradeFilename = "manual-v23-upgrade.json"
+	manualV24UpgradeFilename = "manual-v24-upgrade.json"
 )
 
 var (
@@ -131,6 +133,7 @@ var (
 		v21.Upgrade,
 		v22.Upgrade,
 		v23.Upgrade,
+		v24.Upgrade,
 	}
 
 	// Forks defines forks to be applied to the network
@@ -168,6 +171,7 @@ type DoApp struct {
 	manualV21UpgradePlan upgradetypes.Plan
 	manualV22UpgradePlan upgradetypes.Plan
 	manualV23UpgradePlan upgradetypes.Plan
+	manualV24UpgradePlan upgradetypes.Plan
 
 	// the module manager
 	mm *module.Manager
@@ -457,6 +461,9 @@ func (app *DoApp) PreBlocker(ctx sdk.Context, _ *abci.RequestFinalizeBlock) (*sd
 	if err := app.applyManualV23Upgrade(ctx); err != nil {
 		return nil, err
 	}
+	if err := app.applyManualV24Upgrade(ctx); err != nil {
+		return nil, err
+	}
 	return resp, nil
 }
 
@@ -684,6 +691,10 @@ func (app *DoApp) applyManualV23Upgrade(ctx sdk.Context) error {
 	return app.applyManualUpgrade(ctx, app.manualV23UpgradePlan)
 }
 
+func (app *DoApp) applyManualV24Upgrade(ctx sdk.Context) error {
+	return app.applyManualUpgrade(ctx, app.manualV24UpgradePlan)
+}
+
 func (app *DoApp) applyManualUpgrade(ctx sdk.Context, plan upgradetypes.Plan) error {
 	if plan.Name == "" || ctx.BlockHeight() != plan.Height {
 		return nil
@@ -715,6 +726,7 @@ func (app *DoApp) readManualUpgradePlans() (upgradetypes.Plan, bool, error) {
 		{manualV21UpgradeFilename, v21.UpgradeName, &app.manualV21UpgradePlan},
 		{manualV22UpgradeFilename, v22.UpgradeName, &app.manualV22UpgradePlan},
 		{manualV23UpgradeFilename, v23.UpgradeName, &app.manualV23UpgradePlan},
+		{manualV24UpgradeFilename, v24.UpgradeName, &app.manualV24UpgradePlan},
 	}
 
 	var selected upgradetypes.Plan

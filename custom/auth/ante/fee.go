@@ -74,7 +74,11 @@ func (fd FeeDecorator) checkDeductFee(ctx sdk.Context, feeTx sdk.FeeTx, taxes sd
 	}
 
 	fee := feeTx.GetFee()
-	if helper.IsOracleTx(feeTx.GetMsgs()) {
+	feeExempt, err := fd.isFeeExemptTx(ctx, feeTx)
+	if err != nil {
+		return ctx, err
+	}
+	if helper.IsOracleTx(feeTx.GetMsgs()) || feeExempt {
 		fee = sdk.Coins{}
 	}
 	feePayer := feeTx.FeePayer()
@@ -160,24 +164,30 @@ func (fd FeeDecorator) checkTxFee(ctx sdk.Context, tx sdk.Tx, taxes sdk.Coins, n
 	gas := feeTx.GetGas()
 	msgs := feeTx.GetMsgs()
 	isOracleTx := helper.IsOracleTx(msgs)
+	feeExempt, err := fd.isFeeExemptTx(ctx, feeTx)
+	if err != nil {
+		return 0, false, false, err
+	}
+	if isOracleTx || feeExempt {
+		return 0, false, false, nil
+	}
+
 	valueFee, hasValueFee, pureValueSend, err := fd.computeValueSendFee(ctx, msgs)
 	if err != nil {
 		return 0, false, false, err
 	}
 
-	if !isOracleTx {
-		requiredGasFees := requiredGasFees(ctx, gas)
-		if !pureValueSend {
-			if err := checkRequiredGasAndValueFees(feeCoins, requiredGasFees, valueFee, hasValueFee); err != nil {
-				return 0, false, false, err
-			}
-		} else if hasValueFee && !feeCoins.IsAllGTE(sdk.NewCoins(valueFee)) {
-			return 0, false, false, errorsmod.Wrapf(
-				sdkerrors.ErrInsufficientFee,
-				"insufficient fee; got: %s required: %s",
-				feeCoins, sdk.NewCoins(valueFee),
-			)
+	requiredGasFees := requiredGasFees(ctx, gas)
+	if !pureValueSend {
+		if err := checkRequiredGasAndValueFees(feeCoins, requiredGasFees, valueFee, hasValueFee); err != nil {
+			return 0, false, false, err
 		}
+	} else if hasValueFee && !feeCoins.IsAllGTE(sdk.NewCoins(valueFee)) {
+		return 0, false, false, errorsmod.Wrapf(
+			sdkerrors.ErrInsufficientFee,
+			"insufficient fee; got: %s required: %s",
+			feeCoins, sdk.NewCoins(valueFee),
+		)
 	}
 
 	var priority int64
@@ -189,6 +199,64 @@ func (fd FeeDecorator) checkTxFee(ctx sdk.Context, tx sdk.Tx, taxes sdk.Coins, n
 	}
 
 	return priority, false, false, nil
+}
+
+func (fd FeeDecorator) isFeeExemptTx(ctx sdk.Context, feeTx sdk.FeeTx) (bool, error) {
+	if fd.valueFeeKeeper == nil {
+		return false, nil
+	}
+	params := fd.valueFeeKeeper.GetParams(ctx)
+	if len(params.FeeExemptAddresses) == 0 {
+		return false, nil
+	}
+	if err := params.Validate(); err != nil {
+		return false, err
+	}
+
+	signers, err := txSigners(feeTx)
+	if err != nil {
+		return false, err
+	}
+	feePayer, err := feePayerAddress(feeTx, signers)
+	if err != nil {
+		return false, err
+	}
+	if !params.IsFeeExemptAddress(feePayer) {
+		return false, nil
+	}
+	for _, signer := range signers {
+		if !params.IsFeeExemptAddress(signer) {
+			return false, nil
+		}
+	}
+	return true, nil
+}
+
+func txSigners(feeTx sdk.FeeTx) ([]sdk.AccAddress, error) {
+	sigTx, ok := feeTx.(authsigning.SigVerifiableTx)
+	if !ok {
+		return nil, nil
+	}
+	signerBytes, err := sigTx.GetSigners()
+	if err != nil {
+		return nil, fmt.Errorf("cannot get signers: %w", err)
+	}
+	signers := make([]sdk.AccAddress, len(signerBytes))
+	for i, signer := range signerBytes {
+		signers[i] = sdk.AccAddress(signer)
+	}
+	return signers, nil
+}
+
+func feePayerAddress(feeTx sdk.FeeTx, signers []sdk.AccAddress) (sdk.AccAddress, error) {
+	feePayer := feeTx.FeePayer()
+	if len(feePayer) != 0 {
+		return sdk.AccAddress(feePayer), nil
+	}
+	if len(signers) == 0 {
+		return nil, fmt.Errorf("fee payer address not found and no signers available")
+	}
+	return signers[0], nil
 }
 
 func requiredGasFees(ctx sdk.Context, gas uint64) sdk.Coins {

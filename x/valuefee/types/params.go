@@ -7,6 +7,7 @@ import (
 	sdkmath "cosmossdk.io/math"
 	core "github.com/Daviddochain/dochain-core/v4/types"
 	sdk "github.com/cosmos/cosmos-sdk/types"
+	"github.com/cosmos/cosmos-sdk/types/bech32"
 	paramstypes "github.com/cosmos/cosmos-sdk/x/params/types"
 )
 
@@ -21,6 +22,7 @@ var (
 	KeyDenomValueRates          = []byte("DenomValueRates")
 	KeyChargeUnknownDenomMinFee = []byte("ChargeUnknownDenomMinFee")
 	KeyPolicyVersion            = []byte("PolicyVersion")
+	KeyFeeExemptAddresses       = []byte("FeeExemptAddresses")
 )
 
 type DenomValueRate struct {
@@ -39,6 +41,7 @@ type Params struct {
 	DenomValueRates          []DenomValueRate `json:"denom_value_rates" yaml:"denom_value_rates"`
 	ChargeUnknownDenomMinFee bool             `json:"charge_unknown_denom_min_fee" yaml:"charge_unknown_denom_min_fee"`
 	PolicyVersion            uint32           `json:"policy_version" yaml:"policy_version"`
+	FeeExemptAddresses       []string         `json:"fee_exempt_addresses" yaml:"fee_exempt_addresses"`
 }
 
 func DefaultParams() Params {
@@ -53,6 +56,7 @@ func DefaultParams() Params {
 		DenomValueRates:          []DenomValueRate{{Denom: core.MicroDoDenom, UdoPerBaseUnit: sdkmath.OneInt()}},
 		ChargeUnknownDenomMinFee: false,
 		PolicyVersion:            0,
+		FeeExemptAddresses:       nil,
 	}
 }
 
@@ -88,6 +92,19 @@ func MainnetV23Params() Params {
 	return params
 }
 
+func MainnetV24Params() Params {
+	params := MainnetV23Params()
+	params.PolicyVersion = 24
+	params.FeeExemptAddresses = []string{
+		"do1mjgpy7wjhelpxssm8gl63fz5crl4tydvc2g5pj",
+		"do1xas7z5ldgd296gj37ux2cwc37lt87h008v090d",
+		"do1ftxpqe0dj6rcayz3fhw3xvesq47a26es8enyuu",
+		"do12emm6cvg4sqh9cxsd6ys42kq67gyfjnw3jhhjr",
+		"do1fulr5u0saspce2zuh2quqppesfx65cg5cu9eaz",
+	}
+	return params
+}
+
 func ParamKeyTable() paramstypes.KeyTable {
 	return paramstypes.NewKeyTable().RegisterParamSet(&Params{})
 }
@@ -104,6 +121,7 @@ func (p *Params) ParamSetPairs() paramstypes.ParamSetPairs {
 		paramstypes.NewParamSetPair(KeyDenomValueRates, &p.DenomValueRates, validateDenomValueRates),
 		paramstypes.NewParamSetPair(KeyChargeUnknownDenomMinFee, &p.ChargeUnknownDenomMinFee, validateBool),
 		paramstypes.NewParamSetPair(KeyPolicyVersion, &p.PolicyVersion, validatePolicyVersion),
+		paramstypes.NewParamSetPair(KeyFeeExemptAddresses, &p.FeeExemptAddresses, validateFeeExemptAddresses),
 	}
 }
 
@@ -196,6 +214,40 @@ func validateDenomValueRates(i interface{}) error {
 func hasDenomValueRate(rates []DenomValueRate, denom string) bool {
 	for _, rate := range rates {
 		if rate.Denom == denom {
+			return true
+		}
+	}
+	return false
+}
+
+func validateFeeExemptAddresses(i interface{}) error {
+	v, ok := i.([]string)
+	if !ok {
+		return fmt.Errorf("invalid parameter type: %T", i)
+	}
+
+	seen := map[string]bool{}
+	for _, address := range v {
+		if _, bz, err := bech32.DecodeAndConvert(address); err != nil {
+			return fmt.Errorf("invalid fee exempt address %q: %w", address, err)
+		} else if len(bz) == 0 {
+			return fmt.Errorf("invalid fee exempt address %q: empty address", address)
+		}
+		if seen[address] {
+			return fmt.Errorf("duplicate fee exempt address %s", address)
+		}
+		seen[address] = true
+	}
+	return nil
+}
+
+func (p Params) IsFeeExemptAddress(addr sdk.AccAddress) bool {
+	if len(addr) == 0 {
+		return false
+	}
+	address := addr.String()
+	for _, exempt := range p.FeeExemptAddresses {
+		if exempt == address {
 			return true
 		}
 	}

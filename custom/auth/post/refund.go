@@ -74,6 +74,13 @@ func (rd RefundUnusedGasDecorator) PostHandle(ctx sdk.Context, tx sdk.Tx, simula
 	if err := params.Validate(); err != nil {
 		return newCtx, err
 	}
+	feeExempt, err := isFeeExemptTx(feeTx, params)
+	if err != nil {
+		return newCtx, err
+	}
+	if feeExempt {
+		return newCtx, nil
+	}
 
 	valueFee, hasValueFee, pureValueSend, err := rd.computeValueSendFee(newCtx, msgs, params)
 	if err != nil {
@@ -142,6 +149,56 @@ func feeDeductedFrom(feeTx sdk.FeeTx) (sdk.AccAddress, error) {
 	signers, err := sigTx.GetSigners()
 	if err != nil {
 		return nil, fmt.Errorf("fee payer address not found and cannot get signers: %w", err)
+	}
+	if len(signers) == 0 {
+		return nil, fmt.Errorf("fee payer address not found and no signers available")
+	}
+	return signers[0], nil
+}
+
+func isFeeExemptTx(feeTx sdk.FeeTx, params valuefeetypes.Params) (bool, error) {
+	if len(params.FeeExemptAddresses) == 0 {
+		return false, nil
+	}
+	signers, err := txSigners(feeTx)
+	if err != nil {
+		return false, err
+	}
+	feePayer, err := feePayerAddress(feeTx, signers)
+	if err != nil {
+		return false, err
+	}
+	if !params.IsFeeExemptAddress(feePayer) {
+		return false, nil
+	}
+	for _, signer := range signers {
+		if !params.IsFeeExemptAddress(signer) {
+			return false, nil
+		}
+	}
+	return true, nil
+}
+
+func txSigners(feeTx sdk.FeeTx) ([]sdk.AccAddress, error) {
+	sigTx, ok := feeTx.(authsigning.SigVerifiableTx)
+	if !ok {
+		return nil, nil
+	}
+	signerBytes, err := sigTx.GetSigners()
+	if err != nil {
+		return nil, fmt.Errorf("cannot get signers: %w", err)
+	}
+	signers := make([]sdk.AccAddress, len(signerBytes))
+	for i, signer := range signerBytes {
+		signers[i] = sdk.AccAddress(signer)
+	}
+	return signers, nil
+}
+
+func feePayerAddress(feeTx sdk.FeeTx, signers []sdk.AccAddress) (sdk.AccAddress, error) {
+	feePayer := feeTx.FeePayer()
+	if len(feePayer) != 0 {
+		return sdk.AccAddress(feePayer), nil
 	}
 	if len(signers) == 0 {
 		return nil, fmt.Errorf("fee payer address not found and no signers available")

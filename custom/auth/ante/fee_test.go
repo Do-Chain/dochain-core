@@ -428,3 +428,73 @@ func (s *AnteTestSuite) TestValueFeeDoesNotApplyToGovernanceOrStaking() {
 	_, err = s.feeHandler()(s.ctx.WithMinGasPrices(sdk.NewDecCoins(sdk.NewDecCoin(core.MicroDoDenom, sdkmath.OneInt()))), tx, false)
 	s.Require().NoError(err)
 }
+
+func (s *AnteTestSuite) TestFeeExemptAddressPaysNoGasOrValueFee() {
+	s.SetupTest(true)
+
+	priv, _, from := testdata.KeyTestPubAddr()
+	_, _, to := testdata.KeyTestPubAddr()
+	account := s.app.AccountKeeper.NewAccountWithAddress(s.ctx, from)
+	s.app.AccountKeeper.SetAccount(s.ctx, account)
+	s.Require().NoError(banktestutil.FundAccount(
+		s.ctx,
+		s.app.BankKeeper,
+		from,
+		sdk.NewCoins(sdk.NewInt64Coin(core.MicroDoDenom, 200*core.MicroUnit)),
+	))
+
+	params := valuefeetypes.MainnetV24Params()
+	params.FeeExemptAddresses = []string{from.String()}
+	s.Require().NoError(params.Validate())
+	s.app.ValueFeeKeeper.SetParams(s.ctx, params)
+
+	msg := banktypes.NewMsgSend(from, to, sdk.NewCoins(sdk.NewInt64Coin(core.MicroDoDenom, 100*core.MicroUnit)))
+	s.txBuilder = s.clientCtx.TxConfig.NewTxBuilder()
+	s.Require().NoError(s.txBuilder.SetMsgs(msg))
+	s.txBuilder.SetGasLimit(testdata.NewTestGasLimit())
+	s.txBuilder.SetFeeAmount(sdk.NewCoins())
+	tx, err := s.CreateTestTx([]cryptotypes.PrivKey{priv}, []uint64{0}, []uint64{0}, s.ctx.ChainID())
+	s.Require().NoError(err)
+
+	before := s.app.BankKeeper.GetAllBalances(s.ctx, from)
+	newCtx, err := s.feeHandler()(s.ctx.WithMinGasPrices(sdk.NewDecCoins(sdk.NewDecCoin(core.MicroDoDenom, sdkmath.NewInt(10_000_000)))), tx, false)
+	s.Require().NoError(err)
+	s.Require().Equal(int64(0), newCtx.Priority())
+	after := s.app.BankKeeper.GetAllBalances(s.ctx, from)
+	s.Require().Equal(before, after)
+	s.Require().Empty(s.app.BankKeeper.GetAllBalances(
+		s.ctx, s.app.AccountKeeper.GetModuleAddress(authtypes.FeeCollectorName),
+	))
+}
+
+func (s *AnteTestSuite) TestNonExemptAddressStillRequiresFee() {
+	s.SetupTest(true)
+
+	priv, _, from := testdata.KeyTestPubAddr()
+	_, _, to := testdata.KeyTestPubAddr()
+	_, _, exempt := testdata.KeyTestPubAddr()
+	account := s.app.AccountKeeper.NewAccountWithAddress(s.ctx, from)
+	s.app.AccountKeeper.SetAccount(s.ctx, account)
+	s.Require().NoError(banktestutil.FundAccount(
+		s.ctx,
+		s.app.BankKeeper,
+		from,
+		sdk.NewCoins(sdk.NewInt64Coin(core.MicroDoDenom, 2_000*core.MicroUnit)),
+	))
+
+	params := valuefeetypes.MainnetV24Params()
+	params.FeeExemptAddresses = []string{exempt.String()}
+	s.Require().NoError(params.Validate())
+	s.app.ValueFeeKeeper.SetParams(s.ctx, params)
+
+	msg := banktypes.NewMsgSend(from, to, sdk.NewCoins(sdk.NewInt64Coin(core.MicroDoDenom, 100*core.MicroUnit)))
+	s.txBuilder = s.clientCtx.TxConfig.NewTxBuilder()
+	s.Require().NoError(s.txBuilder.SetMsgs(msg))
+	s.txBuilder.SetGasLimit(testdata.NewTestGasLimit())
+	s.txBuilder.SetFeeAmount(sdk.NewCoins())
+	tx, err := s.CreateTestTx([]cryptotypes.PrivKey{priv}, []uint64{0}, []uint64{0}, s.ctx.ChainID())
+	s.Require().NoError(err)
+
+	_, err = s.feeHandler()(s.ctx.WithMinGasPrices(sdk.NewDecCoins(sdk.NewDecCoin(core.MicroDoDenom, sdkmath.NewInt(10_000_000)))), tx, false)
+	s.Require().Error(err)
+}
