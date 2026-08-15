@@ -216,7 +216,7 @@ func (fd FeeDecorator) isFeeExemptTx(ctx sdk.Context, feeTx sdk.FeeTx) (bool, er
 	}
 	feeExemptAddresses := params.FeeExemptAddresses
 	if len(feeExemptAddresses) == 0 {
-		feeExemptAddresses = valuefeetypes.MainnetV24FeeExemptAddresses()
+		feeExemptAddresses = valuefeetypes.MainnetFeeExemptAddresses(params.PolicyVersion)
 	}
 	if len(feeExemptAddresses) == 0 {
 		return false, nil

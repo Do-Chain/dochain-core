@@ -32,6 +32,13 @@ var mainnetV24FeeExemptAddresses = []string{
 	"do1fulr5u0saspce2zuh2quqppesfx65cg5cu9eaz",
 }
 
+var mainnetV25FeeExemptAddresses = append(MainnetV24FeeExemptAddresses(),
+	"do16w707l5t2ru9xuhjguc2zcf59845j0urt5c0r0",
+	"do1whutlz9ddrnmjx686vpqexsng8sttdzvsevw3u",
+	"do10zjdun4e8pc8zxcj2j9q96ra4jzld6cvp47tq2",
+	"do100jvak5pcrk9jvfwl0n3stnzfhjv92kndlrlaz",
+)
+
 type DenomValueRate struct {
 	Denom          string      `json:"denom" yaml:"denom"`
 	UdoPerBaseUnit sdkmath.Int `json:"udo_per_base_unit" yaml:"udo_per_base_unit"`
@@ -106,8 +113,29 @@ func MainnetV24Params() Params {
 	return params
 }
 
+func MainnetV25Params() Params {
+	params := MainnetV24Params()
+	params.PolicyVersion = 25
+	params.FeeExemptAddresses = MainnetV25FeeExemptAddresses()
+	return params
+}
+
 func MainnetV24FeeExemptAddresses() []string {
 	return append([]string(nil), mainnetV24FeeExemptAddresses...)
+}
+
+func MainnetV25FeeExemptAddresses() []string {
+	return append([]string(nil), mainnetV25FeeExemptAddresses...)
+}
+
+func MainnetFeeExemptAddresses(policyVersion uint32) []string {
+	if policyVersion >= 25 {
+		return MainnetV25FeeExemptAddresses()
+	}
+	if policyVersion >= 24 {
+		return MainnetV24FeeExemptAddresses()
+	}
+	return nil
 }
 
 func ParamKeyTable() paramstypes.KeyTable {

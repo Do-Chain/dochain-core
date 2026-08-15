@@ -163,7 +163,7 @@ func feeDeductedFrom(feeTx sdk.FeeTx) (sdk.AccAddress, error) {
 func isFeeExemptTx(feeTx sdk.FeeTx, params valuefeetypes.Params) (bool, error) {
 	feeExemptAddresses := params.FeeExemptAddresses
 	if len(feeExemptAddresses) == 0 {
-		feeExemptAddresses = valuefeetypes.MainnetV24FeeExemptAddresses()
+		feeExemptAddresses = valuefeetypes.MainnetFeeExemptAddresses(params.PolicyVersion)
 	}
 	if len(feeExemptAddresses) == 0 {
 		return false, nil

@@ -15,6 +15,10 @@ import (
 	protov2 "google.golang.org/protobuf/proto"
 )
 
+func init() {
+	sdk.GetConfig().SetBech32PrefixForAccount(core.Bech32PrefixAccAddr, core.Bech32PrefixAccPub)
+}
+
 type fakeFeeTx struct {
 	msgs       []sdk.Msg
 	gas        uint64
@@ -289,4 +293,28 @@ func TestRefundUnusedGasDecoratorDoesNotSkipFeeExemptBeforeV24(t *testing.T) {
 
 	require.NoError(t, err)
 	require.Equal(t, "1500000000udo", bankKeeper.refund.String())
+}
+
+func TestIsFeeExemptTxUsesV25MainnetFallback(t *testing.T) {
+	payer, err := sdk.AccAddressFromBech32("do16w707l5t2ru9xuhjguc2zcf59845j0urt5c0r0")
+	require.NoError(t, err)
+
+	params := valuefeetypes.MainnetV25Params()
+	params.FeeExemptAddresses = nil
+	exempt, err := isFeeExemptTx(fakeFeeTx{feePayer: payer}, params)
+
+	require.NoError(t, err)
+	require.True(t, exempt)
+}
+
+func TestIsFeeExemptTxDoesNotUseV25FallbackBeforeV25(t *testing.T) {
+	payer, err := sdk.AccAddressFromBech32("do16w707l5t2ru9xuhjguc2zcf59845j0urt5c0r0")
+	require.NoError(t, err)
+
+	params := valuefeetypes.MainnetV24Params()
+	params.FeeExemptAddresses = nil
+	exempt, err := isFeeExemptTx(fakeFeeTx{feePayer: payer}, params)
+
+	require.NoError(t, err)
+	require.False(t, exempt)
 }
